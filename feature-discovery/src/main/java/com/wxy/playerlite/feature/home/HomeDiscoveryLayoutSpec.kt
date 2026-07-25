@@ -3,6 +3,7 @@ package com.wxy.playerlite.feature.home
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 object HomeDiscoveryLayoutSpec {
     val rowContentPadding = PaddingValues(horizontal = 4.dp)
@@ -16,7 +17,7 @@ object HomeDiscoveryLayoutSpec {
     val compactImageSize = 56.dp
     val itemSpacing = 14.dp
     val sectionSpacing = 18.dp
-    val songCardHeight = 82.dp
+    val songCardHeight = 72.dp
     const val songCardWidthFraction = 0.7f
     val songCardSpacing = 18.dp
     const val songColumnItemCount = 3
@@ -30,10 +31,16 @@ object HomeDiscoveryLayoutSpec {
     val standardCardCornerRadius = 16.dp
     val compactCardCornerRadius = 22.dp
     val songCardCornerRadius = 10.dp
-    val songCardCoverSize = 56.dp
+    val songCardCoverSize = 52.dp
     val songCardCoverCornerRadius = 12.dp
     val songCardMenuButtonSize = 24.dp
+    val songDividerStartPadding = 66.dp
+    val songDividerVerticalPadding = 4.dp
+    const val songDividerAlpha = 0.78f
+    val sectionTitleFontSize = 22.sp
+    val sectionTitleLineHeight = 28.sp
 
+    const val sectionTitleMaxLines = 1
     const val titleMaxLines = 1
     const val subtitleMaxLines = 1
     const val bannerBadgeUsesTextOnlyStyle = true

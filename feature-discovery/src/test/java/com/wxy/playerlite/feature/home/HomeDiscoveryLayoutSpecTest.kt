@@ -3,6 +3,7 @@ package com.wxy.playerlite.feature.home
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,13 +31,20 @@ class HomeDiscoveryLayoutSpecTest {
         assertEquals(206.dp, HomeDiscoveryLayoutSpec.bannerHeight)
         assertEquals(222.dp, HomeDiscoveryLayoutSpec.discoveryCardHeight)
         assertEquals(116.dp, HomeDiscoveryLayoutSpec.compactCardHeight)
-        assertEquals(82.dp, HomeDiscoveryLayoutSpec.songCardHeight)
+        assertEquals(72.dp, HomeDiscoveryLayoutSpec.songCardHeight)
     }
 
     @Test
     fun cardText_shouldClampToSingleLineForStableHeight() {
         assertEquals(1, HomeDiscoveryLayoutSpec.titleMaxLines)
         assertEquals(1, HomeDiscoveryLayoutSpec.subtitleMaxLines)
+    }
+
+    @Test
+    fun sectionTitle_shouldUseCompactSingleLineTypography() {
+        assertEquals(22.sp, HomeDiscoveryLayoutSpec.sectionTitleFontSize)
+        assertEquals(28.sp, HomeDiscoveryLayoutSpec.sectionTitleLineHeight)
+        assertEquals(1, HomeDiscoveryLayoutSpec.sectionTitleMaxLines)
     }
 
     @Test
@@ -103,9 +111,16 @@ class HomeDiscoveryLayoutSpecTest {
 
     @Test
     fun songCards_shouldReserveArtworkAndOverflowActionSpace() {
-        assertEquals(56.dp, HomeDiscoveryLayoutSpec.songCardCoverSize)
+        assertEquals(52.dp, HomeDiscoveryLayoutSpec.songCardCoverSize)
         assertEquals(12.dp, HomeDiscoveryLayoutSpec.songCardCoverCornerRadius)
         assertEquals(24.dp, HomeDiscoveryLayoutSpec.songCardMenuButtonSize)
+    }
+
+    @Test
+    fun songRows_shouldUseCompactVisibleDividers() {
+        assertEquals(66.dp, HomeDiscoveryLayoutSpec.songDividerStartPadding)
+        assertEquals(4.dp, HomeDiscoveryLayoutSpec.songDividerVerticalPadding)
+        assertEquals(0.78f, HomeDiscoveryLayoutSpec.songDividerAlpha)
     }
 
     @Test

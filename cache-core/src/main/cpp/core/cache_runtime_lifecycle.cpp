@@ -96,12 +96,38 @@ void CacheRuntime::Shutdown() {
         session->read_generation.fetch_add(1);
         if (provider_bridge_ != nullptr && session->provider_handle > 0) {
             provider_bridge_->CancelInFlightRead(session->provider_handle);
+        }
+        session->data_cv.notify_all();
+    }
+
+    render_loop_.Stop(false);
+    (void) write_loop_.WaitIdle();
+
+    std::vector<std::pair<std::shared_ptr<SessionState>, SessionConfigSnapshot>>
+            final_config_snapshots;
+    final_config_snapshots.reserve(sessions.size());
+    for (const auto& session : sessions) {
+        if (!session) {
+            continue;
+        }
+        std::unique_lock<std::mutex> lock(session->mutex);
+        session->data_cv.wait(lock, [session]() {
+            return session->pending_persist_tasks == 0 &&
+                session->active_provider_operations == 0;
+        });
+        final_config_snapshots.emplace_back(
+                session,
+                CaptureConfigSnapshotLocked(session.get()));
+    }
+    for (const auto& item : final_config_snapshots) {
+        PersistConfigSnapshot(item.first, item.second);
+    }
+
+    for (const auto& session : sessions) {
+        if (session != nullptr && provider_bridge_ != nullptr && session->provider_handle > 0) {
             provider_bridge_->Close(session->provider_handle);
         }
     }
-
-    (void) write_loop_.WaitIdle();
-    render_loop_.Stop(false);
     write_loop_.Stop(true);
 }
 

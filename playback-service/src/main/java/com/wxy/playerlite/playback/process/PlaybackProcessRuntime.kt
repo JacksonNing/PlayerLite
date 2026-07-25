@@ -27,6 +27,10 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +69,79 @@ internal data class PlaybackProcessState(
 ) {
     val currentTrack: PlaybackTrack?
         get() = tracks.getOrNull(activeIndex)
+}
+
+private data class PreparationRequestKey(
+    val itemId: String,
+    val playbackUri: String,
+    val songId: String?,
+    val requestHeaders: Map<String, String>,
+    val preferredAudioQuality: PlaybackAudioQuality
+)
+
+private class PreparationSingleFlight(
+    private val scope: CoroutineScope
+) {
+    private data class ActivePreparation(
+        val generation: Long,
+        val key: PreparationRequestKey,
+        val deferred: Deferred<Boolean>
+    )
+
+    private val lock = Any()
+    private var generation = 0L
+    private var activePreparation: ActivePreparation? = null
+
+    suspend fun execute(
+        key: PreparationRequestKey,
+        block: suspend (isCurrent: () -> Boolean) -> Boolean
+    ): Boolean {
+        val deferred = synchronized(lock) {
+            val active = activePreparation
+            if (active?.key == key) {
+                active.deferred
+            } else {
+                active?.deferred?.cancel(
+                    CancellationException("Playback preparation superseded")
+                )
+                generation += 1L
+                val requestGeneration = generation
+                val created = scope.async(start = CoroutineStart.LAZY) {
+                    block {
+                        synchronized(lock) {
+                            val current = activePreparation
+                            current?.generation == requestGeneration && current.key == key
+                        }
+                    }
+                }
+                activePreparation = ActivePreparation(
+                    generation = requestGeneration,
+                    key = key,
+                    deferred = created
+                )
+                created.invokeOnCompletion {
+                    synchronized(lock) {
+                        if (activePreparation?.deferred === created) {
+                            activePreparation = null
+                        }
+                    }
+                }
+                created
+            }
+        }
+        deferred.start()
+        return deferred.await()
+    }
+
+    fun cancel(reason: String) {
+        val pending = synchronized(lock) {
+            generation += 1L
+            activePreparation?.deferred.also {
+                activePreparation = null
+            }
+        }
+        pending?.cancel(CancellationException(reason))
+    }
 }
 
 internal class PlaybackProcessRuntime(
@@ -113,6 +190,8 @@ internal class PlaybackProcessRuntime(
         onCacheFailure = ::publishCacheFailureStatus
     )
     private val sourceSession = PreparedSourceSession()
+    private val preparationSingleFlight: PreparationSingleFlight? =
+        PreparationSingleFlight(serviceScope)
     @Volatile
     private var playbackGeneration: AtomicLong? = AtomicLong(0L)
     @Volatile
@@ -127,6 +206,8 @@ internal class PlaybackProcessRuntime(
     private var activePlaybackTrackId: String? = null
     @Volatile
     private var pendingAudioQualitySwitchTarget: PlaybackAudioQuality? = null
+    @Volatile
+    private var deferredPlaybackSeekJob: Job? = null
     @Volatile
     private var currentTrackSourceOverrideTrackId: String? = null
     @Volatile
@@ -376,6 +457,10 @@ internal class PlaybackProcessRuntime(
         val sanitizedAudioQuality = sanitizePreferredAudioQuality(audioQuality)
         val currentState = _state.value
         val currentTrack = currentState.currentTrack
+        val qualityChanged = currentState.preferredAudioQuality != sanitizedAudioQuality
+        if (qualityChanged) {
+            preparationSingleFlight?.cancel("播放音质变化")
+        }
         val nextAppliedQuality = if (!currentTrack?.songId.isNullOrBlank()) {
             currentState.appliedAudioQuality
         } else {
@@ -384,7 +469,8 @@ internal class PlaybackProcessRuntime(
         _state.value = currentState.copy(
             preferredAudioQuality = sanitizedAudioQuality,
             appliedAudioQuality = nextAppliedQuality,
-            prewarmSnapshot = null
+            prewarmSnapshot = null,
+            isPreparing = if (qualityChanged) false else currentState.isPreparing
         )
         persistPreferredAudioQuality(sanitizedAudioQuality)
         playbackPrewarmCoordinator?.cancel("默认音质变化")
@@ -395,7 +481,8 @@ internal class PlaybackProcessRuntime(
             (
                 currentState.playWhenReady ||
                     currentState.playbackState == PLAYBACK_STATE_PLAYING ||
-                    currentState.playbackState == PLAYBACK_STATE_PAUSED
+                    currentState.playbackState == PLAYBACK_STATE_PAUSED ||
+                    sourceSession.isPreparedFor(currentTrack.id)
                 )
         ) {
             reprepareCurrentTrackForAudioQualityChange(
@@ -473,6 +560,7 @@ internal class PlaybackProcessRuntime(
         if (!sourceChanged) {
             return true
         }
+        preparationSingleFlight?.cancel("播放音源变化")
         clearCurrentTrackSourceOverride()
         activeAudioSourceRuntime = nextRuntime
         persistActiveAudioSourceRuntime(nextRuntime)
@@ -481,6 +569,7 @@ internal class PlaybackProcessRuntime(
         _state.value = currentState.copy(
             activeAudioSourceConfigJson = normalizedConfigJson,
             prewarmSnapshot = null,
+            isPreparing = false,
             statusText = if (sourceChanged) {
                 "当前音源已更新"
             } else {
@@ -681,8 +770,15 @@ internal class PlaybackProcessRuntime(
         if (sourceOpenCode != IPlaysource.AudioSourceCode.ASC_SUCCESS) {
             pendingAudioQualitySwitchTarget = null
             resetPlaybackRetryState(requestedTrackId)
+            discardPreparedSourceAfterPlaybackStartFailure(source)
             safeLogE("playCurrent source open failed: id=${item.id}, code=${sourceOpenCode.code}")
-            _state.value = _state.value.copy(statusText = "Source open failed(${sourceOpenCode.code})")
+            _state.value = _state.value.copy(
+                playWhenReady = false,
+                playbackState = PLAYBACK_STATE_STOPPED,
+                isSeekSupported = false,
+                isPreparing = false,
+                statusText = "Source open failed(${sourceOpenCode.code})"
+            )
             return
         }
         val supportsFastSeek = source.supportFastSeek()
@@ -694,8 +790,15 @@ internal class PlaybackProcessRuntime(
         ) {
             pendingAudioQualitySwitchTarget = null
             resetPlaybackRetryState(requestedTrackId)
+            discardPreparedSourceAfterPlaybackStartFailure(source)
             safeLogE("playCurrent source rewind failed: id=${item.id}")
-            _state.value = _state.value.copy(statusText = "Source rewind failed")
+            _state.value = _state.value.copy(
+                playWhenReady = false,
+                playbackState = PLAYBACK_STATE_STOPPED,
+                isSeekSupported = false,
+                isPreparing = false,
+                statusText = "Source rewind failed"
+            )
             return
         }
 
@@ -985,6 +1088,7 @@ internal class PlaybackProcessRuntime(
 
     fun stop() {
         playbackPrewarmCoordinator?.cancel("播放停止")
+        preparationSingleFlight?.cancel("播放停止")
         activePlaybackTrackId = null
         invalidatePlaybackGeneration()
         resetPlaybackRetryState()
@@ -992,10 +1096,12 @@ internal class PlaybackProcessRuntime(
         pendingAudioQualitySwitchTarget = null
         clearCurrentTrackSourceOverride()
         playbackCoordinator.stopPlayback(sourceSession.currentSource())
+        releasePreparedSourceSession()
         _state.value = _state.value.copy(
             playWhenReady = false,
             playbackState = PLAYBACK_STATE_STOPPED,
             positionMs = 0L,
+            isPreparing = false,
             prewarmSnapshot = null,
             statusText = "Stopped"
         )
@@ -1045,15 +1151,62 @@ internal class PlaybackProcessRuntime(
             return true
         }
 
+        val state = _state.value
+        if (state.currentTrack?.id != item.id) {
+            return false
+        }
+        val preferredAudioQuality = state.preferredAudioQuality
+        val singleFlight = preparationSingleFlight
+        if (singleFlight == null) {
+            return prepareAndPublish(
+                item = item,
+                preferredAudioQuality = preferredAudioQuality,
+                isFlightCurrent = { true }
+            )
+        }
+        val requestKey = PreparationRequestKey(
+            itemId = item.id,
+            playbackUri = item.uri,
+            songId = item.songId,
+            requestHeaders = item.requestHeaders,
+            preferredAudioQuality = preferredAudioQuality
+        )
+        return singleFlight.execute(requestKey) { isFlightCurrent ->
+            prepareAndPublish(
+                item = item,
+                preferredAudioQuality = preferredAudioQuality,
+                isFlightCurrent = isFlightCurrent
+            )
+        }
+    }
+
+    private suspend fun prepareAndPublish(
+        item: PlaybackTrack,
+        preferredAudioQuality: PlaybackAudioQuality,
+        isFlightCurrent: () -> Boolean
+    ): Boolean {
+        fun isRequestCurrent(): Boolean {
+            val state = _state.value
+            return isFlightCurrent() &&
+                state.currentTrack?.id == item.id &&
+                state.preferredAudioQuality == preferredAudioQuality
+        }
+
+        if (!isRequestCurrent()) {
+            return false
+        }
         _state.value = _state.value.copy(isPreparing = true, statusText = "Preparing")
         return try {
             when (
                 val preparation = prepareTrackWithRecovery(
                     item = item,
-                    preferredAudioQuality = _state.value.preferredAudioQuality
+                    preferredAudioQuality = preferredAudioQuality
                 )
             ) {
                 is PreparationResult.Invalid -> {
+                    if (!isRequestCurrent()) {
+                        return false
+                    }
                     pendingSeekPositionMs = null
                     pendingAudioQualitySwitchTarget = null
                     _state.value = _state.value.copy(
@@ -1072,6 +1225,11 @@ internal class PlaybackProcessRuntime(
                 }
 
                 is PreparationResult.Ready -> {
+                    if (!isRequestCurrent()) {
+                        runCatching { preparation.source.abort() }
+                        runCatching { preparation.source.close() }
+                        return false
+                    }
                     sourceSession.markPrepared(item.id, preparation.source)
                     val duration = preparation.mediaMeta.durationMs.coerceAtLeast(0L)
                     val nextState = _state.value.copy(
@@ -1105,6 +1263,9 @@ internal class PlaybackProcessRuntime(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
+            if (!isRequestCurrent()) {
+                return false
+            }
             pendingSeekPositionMs = null
             pendingAudioQualitySwitchTarget = null
             _state.value = _state.value.copy(
@@ -1783,8 +1944,15 @@ internal class PlaybackProcessRuntime(
     }
 
     private fun releasePreparedSourceSession() {
+        preparationSingleFlight?.cancel("Prepared source released")
         clearCacheProgressEmitter(sourceSession.currentSource())
         sourceSession.release()
+    }
+
+    private fun discardPreparedSourceAfterPlaybackStartFailure(source: IPlaysource) {
+        activePlaybackTrackId = null
+        playbackCoordinator.stopPlayback(source)
+        releasePreparedSourceSession()
     }
 
     private fun persistPlaybackSessionState(force: Boolean = false) {
@@ -1898,10 +2066,12 @@ internal class PlaybackProcessRuntime(
         displayName: String,
         targetPositionMs: Long
     ) {
+        deferredPlaybackSeekJob?.cancel()
+        deferredPlaybackSeekJob = null
         if (targetPositionMs <= 0L) {
             return
         }
-        serviceScope.launch {
+        val job = serviceScope.launch(start = CoroutineStart.LAZY) {
             repeat(INITIAL_PLAYBACK_SEEK_MAX_ATTEMPTS) {
                 val current = _state.value
                 if (
@@ -1946,6 +2116,13 @@ internal class PlaybackProcessRuntime(
                 statusText = audioQualityStatus ?: "Playing: $displayName"
             )
         }
+        deferredPlaybackSeekJob = job
+        job.invokeOnCompletion {
+            if (deferredPlaybackSeekJob === job) {
+                deferredPlaybackSeekJob = null
+            }
+        }
+        job.start()
     }
 
     private fun publishPendingAudioQualitySwitchAppliedStatus() {
@@ -1986,7 +2163,11 @@ internal class PlaybackProcessRuntime(
 
     private fun currentPlaybackGeneration(): Long = playbackGenerationRef().get()
 
-    private fun invalidatePlaybackGeneration(): Long = playbackGenerationRef().incrementAndGet()
+    private fun invalidatePlaybackGeneration(): Long {
+        deferredPlaybackSeekJob?.cancel()
+        deferredPlaybackSeekJob = null
+        return playbackGenerationRef().incrementAndGet()
+    }
 
     private fun shouldRetryPlayback(
         track: PlaybackTrack,

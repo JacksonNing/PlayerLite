@@ -146,25 +146,59 @@ CacheRuntime::StorageSnapshot CacheRuntime::ReadStorageSnapshotLocked(
     return snapshot;
 }
 
-bool CacheRuntime::PersistConfigLocked(const SessionState& session) {
-    std::vector<Range> ranges = session.storage.completed_ranges;
-    if (ranges.empty() && !session.storage.cached_blocks.empty()) {
+CacheRuntime::SessionConfigSnapshot CacheRuntime::CaptureConfigSnapshotLocked(
+        SessionState* session) {
+    SessionConfigSnapshot snapshot;
+    if (session == nullptr) {
+        return snapshot;
+    }
+    snapshot.session_id = session->session_id;
+    snapshot.version = ++session->next_metadata_snapshot_version;
+    snapshot.resource_key = session->resource_key;
+    snapshot.config_file = session->storage.config_file;
+    snapshot.storage.block_size_bytes = session->storage.block_size_bytes;
+    snapshot.storage.content_length = session->storage.content_length;
+    snapshot.storage.duration_ms = session->storage.duration_ms;
+    snapshot.storage.block_indexes = session->storage.cached_blocks;
+    snapshot.storage.completed_ranges = session->storage.completed_ranges;
+    snapshot.storage.last_access_epoch_ms = session->storage.last_access_epoch_ms;
+    return snapshot;
+}
+
+bool CacheRuntime::PersistConfigSnapshot(
+        const std::shared_ptr<SessionState>& session,
+        const SessionConfigSnapshot& snapshot) {
+    if (session == nullptr || snapshot.session_id <= 0 || snapshot.version == 0 ||
+        snapshot.config_file.empty()) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> io_lock(session->metadata_io_mutex);
+    if (snapshot.version <= session->persisted_metadata_snapshot_version) {
+        return true;
+    }
+
+    std::vector<Range> ranges = snapshot.storage.completed_ranges;
+    if (ranges.empty() && !snapshot.storage.block_indexes.empty()) {
         ranges = TrunkIndex::BuildRangesFromBlocks(
-                session.storage.cached_blocks,
-                session.storage.block_size_bytes);
+                snapshot.storage.block_indexes,
+                snapshot.storage.block_size_bytes);
     }
 
     const auto temp_file = std::filesystem::path(
-            session.storage.config_file.string() + "." + std::to_string(session.session_id) + ".tmp");
+            snapshot.config_file.string() + "." + std::to_string(snapshot.session_id) + "." +
+            std::to_string(snapshot.version) + ".tmp");
     std::ofstream output(temp_file, std::ios::binary | std::ios::trunc);
     output << BuildConfigJson(
-            session.resource_key,
-            session.storage.block_size_bytes,
-            session.storage.content_length,
-            session.storage.duration_ms,
-            session.storage.cached_blocks,
+            snapshot.resource_key,
+            snapshot.storage.block_size_bytes,
+            snapshot.storage.content_length,
+            snapshot.storage.duration_ms,
+            snapshot.storage.block_indexes,
             ranges,
-            session.storage.last_access_epoch_ms > 0 ? session.storage.last_access_epoch_ms : NowEpochMs());
+            snapshot.storage.last_access_epoch_ms > 0
+                    ? snapshot.storage.last_access_epoch_ms
+                    : NowEpochMs());
     output.close();
     if (!output.good()) {
         std::error_code remove_error;
@@ -173,13 +207,31 @@ bool CacheRuntime::PersistConfigLocked(const SessionState& session) {
     }
 
     std::error_code rename_error;
-    std::filesystem::rename(temp_file, session.storage.config_file, rename_error);
+    std::filesystem::rename(temp_file, snapshot.config_file, rename_error);
     if (rename_error) {
         std::error_code remove_error;
         std::filesystem::remove(temp_file, remove_error);
         return false;
     }
+    session->persisted_metadata_snapshot_version = snapshot.version;
     return true;
+}
+
+int64_t CacheRuntime::AvailableSizeInRanges(
+        const std::vector<Range>& ranges,
+        int64_t offset) {
+    if (offset < 0) {
+        return 0;
+    }
+    for (const auto& range : ranges) {
+        if (range.start <= offset && range.end > offset) {
+            return range.end - offset;
+        }
+        if (range.start > offset) {
+            return 0;
+        }
+    }
+    return 0;
 }
 
 }  // namespace cachecore

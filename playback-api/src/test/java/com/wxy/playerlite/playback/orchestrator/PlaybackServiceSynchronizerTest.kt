@@ -257,6 +257,49 @@ class PlaybackServiceSynchronizerTest {
     }
 
     @Test
+    fun observeRemotePlaybackState_shouldDeduplicateSnapshotsUntilDisconnected() {
+        val runtime = FakePlaybackRuntime(
+            queueItems = emptyList(),
+            activeIndex = 0,
+            playbackMode = PlaybackMode.LIST_LOOP
+        )
+        val serviceController = FakePlayerServiceController(currentSnapshot = null)
+        val synchronizer = PlaybackServiceSynchronizer(
+            runtime = runtime,
+            serviceController = serviceController,
+            playbackStateMapper = { 11 },
+            localShouldContinuePlayback = { false }
+        )
+        val snapshot = RemotePlaybackSnapshot(
+            playbackState = Player.STATE_READY,
+            playWhenReady = true,
+            isPlaying = true,
+            isSeekSupported = true,
+            currentPositionMs = 24_000L,
+            bufferedPositionMs = 40_000L,
+            durationMs = 200_000L,
+            playbackSpeed = 1.0f,
+            playbackMode = PlaybackMode.LIST_LOOP,
+            statusText = "Playing",
+            currentPlayable = null,
+            currentMediaId = "track-1",
+            playbackOutputInfo = null,
+            audioMeta = null
+        )
+
+        synchronizer.observeRemotePlaybackState()
+        serviceController.emitSnapshot(snapshot)
+        serviceController.emitSnapshot(snapshot)
+
+        assertEquals(1, runtime.remoteUpdateCalls)
+
+        serviceController.emitSnapshot(null)
+        serviceController.emitSnapshot(snapshot)
+
+        assertEquals(2, runtime.remoteUpdateCalls)
+    }
+
+    @Test
     fun syncRemotePlaybackState_whenSnapshotIsRetrying_shouldProjectPreparingStateAndRetryStatus() {
         val runtime = FakePlaybackRuntime(
             queueItems = emptyList(),
@@ -396,6 +439,7 @@ private class FakePlaybackRuntime(
     var lastRemoteUpdate: RemoteUpdate? = null
     var lastDetailQueueReplacement: Pair<List<PlaylistItem>, Int>? = null
     var metadataUpdates: Map<String, PlaylistItem> = emptyMap()
+    var remoteUpdateCalls: Int = 0
 
     override fun playbackQueueItems(): List<PlaylistItem> = queueItems
 
@@ -454,6 +498,7 @@ private class FakePlaybackRuntime(
         appliedAudioQuality: PlaybackAudioQuality?,
         cacheProgress: PlaybackCacheProgressSnapshot?
     ) {
+        remoteUpdateCalls += 1
         lastRemoteUpdate = RemoteUpdate(
             playbackState = playbackState,
             positionMs = positionMs,

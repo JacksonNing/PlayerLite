@@ -83,13 +83,16 @@ bool CacheRuntime::CloseSession(int64_t session_id) {
         provider_bridge_->CancelInFlightRead(session->provider_handle);
     }
 
+    SessionConfigSnapshot config_snapshot;
     {
         std::unique_lock<std::mutex> lock(session->mutex);
         session->data_cv.wait(lock, [session]() {
-            return session->pending_persist_tasks == 0;
+            return session->pending_persist_tasks == 0 &&
+                session->active_provider_operations == 0;
         });
-        PersistConfigLocked(*session);
+        config_snapshot = CaptureConfigSnapshotLocked(session.get());
     }
+    PersistConfigSnapshot(session, config_snapshot);
 
     if (provider_bridge_ != nullptr && session->provider_handle > 0) {
         provider_bridge_->Close(session->provider_handle);
@@ -148,6 +151,69 @@ std::vector<uint8_t> CacheRuntime::ReadAt(int64_t session_id, int64_t offset, in
     return ReadAtInternal(session, offset, size);
 }
 
+bool CacheRuntime::BeginProviderOperation(
+        const std::shared_ptr<SessionState>& session,
+        int64_t* out_provider_handle,
+        std::optional<uint64_t> expected_generation,
+        bool allow_closed) {
+    if (session == nullptr || out_provider_handle == nullptr || provider_bridge_ == nullptr) {
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(session->mutex);
+    if ((!allow_closed && session->closed.load()) || session->provider_handle <= 0) {
+        return false;
+    }
+    if (expected_generation.has_value() &&
+        session->read_generation.load() != expected_generation.value()) {
+        return false;
+    }
+    session->active_provider_operations += 1;
+    *out_provider_handle = session->provider_handle;
+    return true;
+}
+
+void CacheRuntime::EndProviderOperation(const std::shared_ptr<SessionState>& session) {
+    if (session == nullptr) {
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(session->mutex);
+        if (session->active_provider_operations > 0) {
+            session->active_provider_operations -= 1;
+        }
+    }
+    session->data_cv.notify_all();
+}
+
+CacheRuntime::ProviderOperationGuard::ProviderOperationGuard(
+        CacheRuntime* runtime,
+        std::shared_ptr<SessionState> session,
+        std::optional<uint64_t> expected_generation,
+        bool allow_closed)
+    : runtime_(runtime),
+      session_(std::move(session)) {
+    active_ = runtime_ != nullptr &&
+        runtime_->BeginProviderOperation(
+                session_,
+                &provider_handle_,
+                expected_generation,
+                allow_closed);
+}
+
+CacheRuntime::ProviderOperationGuard::~ProviderOperationGuard() {
+    if (active_) {
+        runtime_->EndProviderOperation(session_);
+    }
+}
+
+CacheRuntime::ProviderOperationGuard::operator bool() const {
+    return active_;
+}
+
+int64_t CacheRuntime::ProviderOperationGuard::provider_handle() const {
+    return provider_handle_;
+}
+
 int64_t CacheRuntime::RefreshContentLengthFromProvider(
         const std::shared_ptr<SessionState>& session,
         bool allow_growth_only) {
@@ -156,37 +222,45 @@ int64_t CacheRuntime::RefreshContentLengthFromProvider(
     }
 
     int64_t current = -1;
-    int64_t provider_handle = -1;
     {
         std::lock_guard<std::mutex> lock(session->mutex);
         current = session->storage.content_length;
-        provider_handle = session->provider_handle;
     }
 
-    if (provider_bridge_ == nullptr || provider_handle <= 0) {
+    ProviderOperationGuard operation(this, session);
+    if (!operation) {
         return current;
     }
 
-    const int64_t resolved = provider_bridge_->QueryContentLength(provider_handle);
+    const int64_t resolved =
+            provider_bridge_->QueryContentLength(operation.provider_handle());
     if (resolved <= 0) {
         return current;
     }
 
-    std::lock_guard<std::mutex> lock(session->mutex);
-    if (session->closed.load()) {
-        return session->storage.content_length;
+    std::optional<SessionConfigSnapshot> config_snapshot;
+    int64_t result = current;
+    {
+        std::lock_guard<std::mutex> lock(session->mutex);
+        if (session->closed.load()) {
+            return session->storage.content_length;
+        }
+        const int64_t stored = session->storage.content_length;
+        const bool should_update =
+                stored < 0 ||
+                (!allow_growth_only && resolved != stored) ||
+                (allow_growth_only && resolved > stored);
+        if (should_update) {
+            session->storage.content_length = resolved;
+            session->storage.last_access_epoch_ms = NowEpochMs();
+            config_snapshot = CaptureConfigSnapshotLocked(session.get());
+        }
+        result = session->storage.content_length;
     }
-    const int64_t stored = session->storage.content_length;
-    const bool should_update =
-            stored < 0 ||
-            (!allow_growth_only && resolved != stored) ||
-            (allow_growth_only && resolved > stored);
-    if (should_update) {
-        session->storage.content_length = resolved;
-        session->storage.last_access_epoch_ms = NowEpochMs();
-        PersistConfigLocked(*session);
+    if (config_snapshot.has_value()) {
+        PersistConfigSnapshot(session, config_snapshot.value());
     }
-    return session->storage.content_length;
+    return result;
 }
 
 int64_t CacheRuntime::Seek(int64_t session_id, int64_t offset, int32_t whence) {
@@ -229,7 +303,7 @@ int64_t CacheRuntime::Seek(int64_t session_id, int64_t offset, int32_t whence) {
         const bool memory_hit =
                 target_offset >= window_start && target_offset < window_end;
         const bool disk_hit =
-                session->local_cache.GetTrunkIndex().AvailableSize(target_offset) > 0;
+                AvailableSizeInRanges(session->storage.completed_ranges, target_offset) > 0;
         const bool at_eof =
                 session->storage.content_length >= 0 &&
                 target_offset >= session->storage.content_length;
@@ -240,8 +314,8 @@ int64_t CacheRuntime::Seek(int64_t session_id, int64_t offset, int32_t whence) {
         session->prefetch_failed = false;
         session->prefetch_failure_generation = 0;
         session->prefetch_failure_offset = -1;
+        next_generation = session->read_generation.fetch_add(1) + 1;
         if (!target_is_cached) {
-            next_generation = session->read_generation.fetch_add(1) + 1;
             // A cache miss moves the network anchor. Drop the old memory window
             // so reads cannot stay biased toward the previous range.
             session->memory_cache.Clear();
@@ -251,8 +325,11 @@ int64_t CacheRuntime::Seek(int64_t session_id, int64_t offset, int32_t whence) {
     session->data_cv.notify_all();
 
     if (target_is_cached) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        TouchMemorySessionLocked(session_id);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            TouchMemorySessionLocked(session_id);
+        }
+        EnsurePrefetch(session, target_offset, next_generation);
         return target_offset;
     }
 

@@ -55,7 +55,7 @@ bool CacheRuntime::WaitForReadable(
                 if (window_end > offset && offset >= window_start) {
                     return true;
                 }
-                return session->local_cache.GetTrunkIndex().AvailableSize(offset) > 0;
+                return AvailableSizeInRanges(session->storage.completed_ranges, offset) > 0;
             });
 }
 
@@ -126,6 +126,7 @@ void CacheRuntime::PrefetchLoop(
         int64_t window_end = 0;
         int64_t fetch_offset = 0;
         int32_t fetch_size = 0;
+        int32_t disk_read_size = 0;
         int64_t provider_handle = -1;
         std::vector<uint8_t> disk_segment;
 
@@ -172,18 +173,47 @@ void CacheRuntime::PrefetchLoop(
             fetch_size = std::max<int32_t>(1, fetch_size);
 
             const int64_t disk_available =
-                    session->local_cache.GetTrunkIndex().AvailableSize(fetch_offset);
+                    AvailableSizeInRanges(session->storage.completed_ranges, fetch_offset);
             if (disk_available > 0) {
-                const int32_t disk_read_size = static_cast<int32_t>(std::min<int64_t>(
+                disk_read_size = static_cast<int32_t>(std::min<int64_t>(
                         fetch_size,
                         disk_available));
-                disk_segment = session->local_cache.Read(fetch_offset, disk_read_size);
-                if (!disk_segment.empty()) {
-                    session->memory_cache.Write(fetch_offset, disk_segment);
-                    session->memory_cached_bytes.store(
-                            static_cast<int64_t>(session->memory_cache.Size()));
-                }
             }
+        }
+
+        if (disk_read_size > 0) {
+            std::lock_guard<std::mutex> cache_lock(session->cache_io_mutex);
+            disk_segment = session->local_cache.Read(fetch_offset, disk_read_size);
+        }
+
+        bool request_still_current = false;
+        {
+            std::lock_guard<std::mutex> lock(session->mutex);
+            if (session->closed.load() || session->read_generation.load() != expected_generation) {
+                break;
+            }
+            const int64_t current_cursor =
+                    std::max<int64_t>(0, session->prefetch_cursor_offset);
+            int64_t current_target_end =
+                    current_cursor + std::max<int64_t>(0, session->memory_window_capacity_bytes);
+            if (session->storage.content_length >= 0) {
+                current_target_end = std::min<int64_t>(
+                        current_target_end,
+                        session->storage.content_length);
+            }
+            const int64_t request_end =
+                    fetch_offset + static_cast<int64_t>(fetch_size);
+            request_still_current =
+                    request_end > current_cursor && fetch_offset < current_target_end;
+            if (request_still_current && !disk_segment.empty()) {
+                session->memory_cache.Write(fetch_offset, disk_segment);
+                session->memory_cached_bytes.store(
+                        static_cast<int64_t>(session->memory_cache.Size()));
+            }
+        }
+
+        if (!request_still_current) {
+            continue;
         }
 
         if (!disk_segment.empty()) {
@@ -259,8 +289,12 @@ void CacheRuntime::PrefetchLoop(
             return true;
         };
 
+        ProviderOperationGuard operation(this, session, expected_generation);
+        if (!operation) {
+            break;
+        }
         const bool streamed = provider_bridge_->ReadAtStream(
-                provider_handle,
+                operation.provider_handle(),
                 fetch_offset,
                 fetch_size,
                 callbacks);
@@ -330,14 +364,17 @@ std::vector<uint8_t> CacheRuntime::ReadAtInternal(
         return {};
     }
 
+    const uint64_t request_generation = session->read_generation.load();
+
     // FFmpeg will keep calling our read callback; always return the bytes we have
     // available, and block until at least 1 byte is readable (unless EOF/close).
     const auto stall_start = std::chrono::steady_clock::now();
     while (true) {
-        if (session->closed.load()) {
+        if (session->closed.load() ||
+            session->read_generation.load() != request_generation) {
             return {};
         }
-        const uint64_t generation = session->read_generation.load();
+        const uint64_t generation = request_generation;
 
         int64_t content_length = -1;
         {
@@ -389,17 +426,29 @@ std::vector<uint8_t> CacheRuntime::ReadAtInternal(
             return segment;
         }
 
+        int32_t disk_read_size = 0;
         {
             std::lock_guard<std::mutex> lock(session->mutex);
-            const int64_t available = session->local_cache.GetTrunkIndex().AvailableSize(offset);
+            const int64_t available =
+                    AvailableSizeInRanges(session->storage.completed_ranges, offset);
             if (available > 0) {
-                const auto read_size = std::min<int32_t>(desired, static_cast<int32_t>(available));
-                segment = session->local_cache.Read(offset, read_size);
-                if (!segment.empty()) {
-                    session->memory_cache.Write(offset, segment);
-                    session->memory_cached_bytes.store(static_cast<int64_t>(session->memory_cache.Size()));
-                    hit = true;
-                }
+                disk_read_size = std::min<int32_t>(
+                        desired,
+                        static_cast<int32_t>(available));
+            }
+        }
+        if (disk_read_size > 0) {
+            std::lock_guard<std::mutex> cache_lock(session->cache_io_mutex);
+            segment = session->local_cache.Read(offset, disk_read_size);
+        }
+        if (!segment.empty()) {
+            std::lock_guard<std::mutex> lock(session->mutex);
+            if (!session->closed.load() &&
+                session->read_generation.load() == generation) {
+                session->memory_cache.Write(offset, segment);
+                session->memory_cached_bytes.store(
+                        static_cast<int64_t>(session->memory_cache.Size()));
+                hit = true;
             }
         }
 
@@ -506,10 +555,6 @@ bool CacheRuntime::FetchBlockFromProvider(
             return false;
         }
 
-        if (provider_bridge_ == nullptr || session->provider_handle <= 0) {
-            return false;
-        }
-
         std::atomic<int32_t> streamed_bytes{0};
         ProviderBridge::StreamCallbacks callbacks;
         callbacks.on_data = [this, session, expected_generation, &streamed_bytes](
@@ -544,18 +589,27 @@ bool CacheRuntime::FetchBlockFromProvider(
         };
 
         bool streamed = false;
-        const bool posted = render_loop_.PostAndWait([this, &streamed, session, request_offset, fetch_size, &callbacks] {
+        ProviderOperationGuard operation(this, session, expected_generation);
+        if (!operation) {
+            *out_cancelled = session->closed.load() ||
+                session->read_generation.load() != expected_generation;
+            return false;
+        }
+        const bool executed = render_loop_.PostAndWait(
+                [this, &streamed, &operation, request_offset, fetch_size, &callbacks] {
             streamed = provider_bridge_->ReadAtStream(
-                    session->provider_handle,
+                    operation.provider_handle(),
                     request_offset,
                     fetch_size,
                     callbacks);
         });
-        if (!posted) {
+        if (!executed &&
+            !session->closed.load() &&
+            session->read_generation.load() == expected_generation) {
             // Fallback to current JNI caller thread when async worker cannot resolve
             // provider callbacks (for example class-loader scoped JNI lookup issues).
             streamed = provider_bridge_->ReadAtStream(
-                    session->provider_handle,
+                    operation.provider_handle(),
                     request_offset,
                     fetch_size,
                     callbacks);
@@ -580,49 +634,84 @@ void CacheRuntime::ScheduleBlockPersist(
         const std::shared_ptr<SessionState>& session,
         int64_t block_start_offset,
         std::vector<uint8_t> bytes,
-        uint64_t /*expected_generation*/) {
+        uint64_t expected_generation) {
     if (session == nullptr || bytes.empty() || block_start_offset < 0) {
         return;
     }
 
+    int32_t block_size_bytes = 0;
     {
         std::lock_guard<std::mutex> lock(session->mutex);
-        if (session->closed.load()) {
+        if (session->closed.load() ||
+            session->read_generation.load() != expected_generation) {
             return;
         }
         session->pending_persist_tasks += 1;
+        block_size_bytes = session->storage.block_size_bytes;
     }
 
     const std::weak_ptr<SessionState> weak_session(session);
     auto shared_bytes = std::make_shared<std::vector<uint8_t>>(std::move(bytes));
-    auto persist_task = [this, weak_session, block_start_offset, shared_bytes]() {
+    auto persist_task = [
+            this,
+            weak_session,
+            block_start_offset,
+            block_size_bytes,
+            shared_bytes]() {
         auto locked = weak_session.lock();
         if (locked == nullptr) {
             return;
         }
 
+        bool write_succeeded = false;
+        std::vector<Range> completed_ranges;
+        std::unordered_set<int64_t> cached_blocks;
+        {
+            std::lock_guard<std::mutex> cache_lock(locked->cache_io_mutex);
+            write_succeeded = locked->local_cache.Write(block_start_offset, *shared_bytes);
+            if (write_succeeded) {
+                completed_ranges = locked->local_cache.GetTrunkIndex().Ranges();
+                cached_blocks =
+                        locked->local_cache.GetTrunkIndex().ToBlockSet(block_size_bytes);
+            }
+        }
+
+        int64_t content_length = -1;
+        if (write_succeeded) {
+            ProviderOperationGuard operation(this, locked, std::nullopt, true);
+            if (operation) {
+                content_length =
+                        provider_bridge_->QueryContentLength(operation.provider_handle());
+            }
+        }
+
+        std::optional<SessionConfigSnapshot> config_snapshot;
         {
             std::lock_guard<std::mutex> lock(locked->mutex);
-            if (locked->local_cache.Write(block_start_offset, *shared_bytes)) {
-                locked->storage.completed_ranges = locked->local_cache.GetTrunkIndex().Ranges();
-                locked->storage.cached_blocks =
-                        locked->local_cache.GetTrunkIndex().ToBlockSet(locked->storage.block_size_bytes);
-
-                if (provider_bridge_ != nullptr && locked->provider_handle > 0) {
-                    const auto content_length = provider_bridge_->QueryContentLength(locked->provider_handle);
-                    if (content_length > 0 &&
-                        (locked->storage.content_length < 0 || content_length > locked->storage.content_length)) {
-                        locked->storage.content_length = content_length;
-                    }
+            if (write_succeeded) {
+                locked->storage.completed_ranges = std::move(completed_ranges);
+                locked->storage.cached_blocks = std::move(cached_blocks);
+                if (content_length > 0 &&
+                    (locked->storage.content_length < 0 ||
+                     content_length > locked->storage.content_length)) {
+                    locked->storage.content_length = content_length;
                 }
 
                 locked->storage.last_access_epoch_ms = NowEpochMs();
                 locked->bytes_since_metadata_persist += static_cast<int64_t>(shared_bytes->size());
                 if (locked->bytes_since_metadata_persist >= kMetadataPersistIntervalBytes) {
-                    PersistConfigLocked(*locked);
+                    config_snapshot = CaptureConfigSnapshotLocked(locked.get());
                     locked->bytes_since_metadata_persist = 0;
                 }
             }
+        }
+
+        if (config_snapshot.has_value()) {
+            PersistConfigSnapshot(locked, config_snapshot.value());
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(locked->mutex);
             locked->pending_persist_tasks -= 1;
         }
         locked->data_cv.notify_all();

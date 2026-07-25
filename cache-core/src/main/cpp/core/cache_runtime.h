@@ -122,6 +122,8 @@ private:
         std::atomic<bool> closed{false};
 
         mutable std::mutex mutex;
+        mutable std::mutex cache_io_mutex;
+        mutable std::mutex metadata_io_mutex;
         std::condition_variable data_cv;
         SessionStorageFiles storage;
         VirtualFile local_cache;
@@ -137,7 +139,10 @@ private:
         uint64_t prefetch_failure_generation = 0;
         int64_t prefetch_failure_offset = -1;
         int32_t pending_persist_tasks = 0;
+        int32_t active_provider_operations = 0;
         int64_t bytes_since_metadata_persist = 0;
+        uint64_t next_metadata_snapshot_version = 0;
+        uint64_t persisted_metadata_snapshot_version = 0;
         std::vector<Range> pending_progress_chunks;
     };
 
@@ -148,6 +153,36 @@ private:
         std::unordered_set<int64_t> block_indexes;
         std::vector<Range> completed_ranges;
         int64_t last_access_epoch_ms = -1;
+    };
+
+    struct SessionConfigSnapshot {
+        int64_t session_id = -1;
+        uint64_t version = 0;
+        std::string resource_key;
+        std::filesystem::path config_file;
+        StorageSnapshot storage;
+    };
+
+    class ProviderOperationGuard {
+    public:
+        ProviderOperationGuard(
+                CacheRuntime* runtime,
+                std::shared_ptr<SessionState> session,
+                std::optional<uint64_t> expected_generation = std::nullopt,
+                bool allow_closed = false);
+        ~ProviderOperationGuard();
+
+        ProviderOperationGuard(const ProviderOperationGuard&) = delete;
+        ProviderOperationGuard& operator=(const ProviderOperationGuard&) = delete;
+
+        explicit operator bool() const;
+        int64_t provider_handle() const;
+
+    private:
+        CacheRuntime* runtime_;
+        std::shared_ptr<SessionState> session_;
+        int64_t provider_handle_ = -1;
+        bool active_ = false;
     };
 
     bool EnsureRootDirLocked();
@@ -164,7 +199,16 @@ private:
             int32_t fallback_block_size_bytes,
             int64_t fallback_content_length,
             int64_t fallback_duration_ms);
-    bool PersistConfigLocked(const SessionState& session);
+    SessionConfigSnapshot CaptureConfigSnapshotLocked(SessionState* session);
+    bool PersistConfigSnapshot(
+            const std::shared_ptr<SessionState>& session,
+            const SessionConfigSnapshot& snapshot);
+    bool BeginProviderOperation(
+            const std::shared_ptr<SessionState>& session,
+            int64_t* out_provider_handle,
+            std::optional<uint64_t> expected_generation = std::nullopt,
+            bool allow_closed = false);
+    void EndProviderOperation(const std::shared_ptr<SessionState>& session);
     int64_t RefreshContentLengthFromProvider(
             const std::shared_ptr<SessionState>& session,
             bool allow_growth_only = true);
@@ -225,6 +269,9 @@ private:
     static std::string BuildRangesJson(const std::vector<Range>& ranges);
     static std::string EscapeJson(const std::string& raw);
     static int64_t NowEpochMs();
+    static int64_t AvailableSizeInRanges(
+            const std::vector<Range>& ranges,
+            int64_t offset);
 
     std::shared_ptr<SessionState> GetSession(int64_t session_id) const;
 

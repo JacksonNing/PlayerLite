@@ -54,6 +54,37 @@ class HomeOverviewScreenRobolectricTest {
     }
 
     @Test
+    fun longSectionTitle_shouldPreserveServerText() {
+        val serverTitle = "『轻音』远离纷扰，感受内心的宁静"
+
+        composeRule.setContent {
+            MaterialTheme {
+                HomeOverviewScreen(
+                    overviewState = HomeOverviewUiState(
+                        isLoading = false,
+                        sections = listOf(
+                            HomeSectionUiModel(
+                                code = "HOMEPAGE_BLOCK_STYLE_SONG",
+                                title = serverTitle,
+                                layout = HomeSectionLayout.HORIZONTAL_LIST,
+                                items = emptyList()
+                            )
+                        ),
+                        searchKeywords = listOf("默认热搜")
+                    ),
+                    bottomContentPadding = 0.dp,
+                    onSearchClick = {},
+                    onRetry = {},
+                    onAction = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("home_section_title").assertIsDisplayed()
+        composeRule.onNodeWithText(serverTitle).assertIsDisplayed()
+    }
+
+    @Test
     fun discoveryItems_shouldExposeClickActionAcrossLayouts() {
         composeRule.setContent {
             MaterialTheme {

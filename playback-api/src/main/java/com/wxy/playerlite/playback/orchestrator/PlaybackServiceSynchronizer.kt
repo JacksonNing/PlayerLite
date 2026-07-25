@@ -12,9 +12,13 @@ class PlaybackServiceSynchronizer(
     private val playbackStateMapper: (RemotePlaybackSnapshot) -> Int,
     private val localShouldContinuePlayback: () -> Boolean
 ) {
+    private var lastAppliedSnapshot: RemotePlaybackSnapshot? = null
+
     fun observeRemotePlaybackState() {
         serviceController.setSnapshotListener { snapshot ->
-            if (snapshot != null) {
+            if (snapshot == null) {
+                lastAppliedSnapshot = null
+            } else {
                 applyRemotePlaybackSnapshot(snapshot)
             }
         }
@@ -23,6 +27,7 @@ class PlaybackServiceSynchronizer(
 
     fun stopObservingRemotePlaybackState() {
         serviceController.setSnapshotListener(null)
+        lastAppliedSnapshot = null
     }
 
     fun syncRemotePlaybackState(): Boolean {
@@ -31,6 +36,9 @@ class PlaybackServiceSynchronizer(
     }
 
     private fun applyRemotePlaybackSnapshot(snapshot: RemotePlaybackSnapshot): Boolean {
+        if (snapshot == lastAppliedSnapshot) {
+            return false
+        }
         runtime.updateRemotePlaybackState(
             playbackState = playbackStateMapper(snapshot),
             positionMs = snapshot.currentPositionMs,
@@ -55,6 +63,7 @@ class PlaybackServiceSynchronizer(
         snapshot.statusText
             ?.takeIf { it.isNotBlank() }
             ?.let(runtime::setStatusText)
+        lastAppliedSnapshot = snapshot
         return true
     }
 

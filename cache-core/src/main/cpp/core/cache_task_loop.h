@@ -38,6 +38,7 @@ private:
     bool running_ = false;
     bool stop_requested_ = false;
     bool drain_on_stop_ = true;
+    static thread_local const TaskLoop* current_loop_;
 };
 
 }  // namespace cachecore

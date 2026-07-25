@@ -667,9 +667,18 @@ private fun HomeSongColumn(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 70.dp, end = 2.dp, top = 9.dp, bottom = 9.dp)
+                            .padding(
+                                start = HomeDiscoveryLayoutSpec.songDividerStartPadding,
+                                end = 2.dp,
+                                top = HomeDiscoveryLayoutSpec.songDividerVerticalPadding,
+                                bottom = HomeDiscoveryLayoutSpec.songDividerVerticalPadding
+                            )
                             .height(1.dp)
-                            .background(homeDividerColor.copy(alpha = 0.42f))
+                            .background(
+                                homeDividerColor.copy(
+                                    alpha = HomeDiscoveryLayoutSpec.songDividerAlpha
+                                )
+                            )
                             .testTag("home_song_divider_${columnIndex}_$itemIndex")
                     )
                 }
@@ -798,9 +807,14 @@ private fun HomeSectionUiModel.usesSongCardLayout(): Boolean {
 private fun HomeSectionTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Black,
-        color = homeTitleColor
+        style = MaterialTheme.typography.titleLarge,
+        fontSize = HomeDiscoveryLayoutSpec.sectionTitleFontSize,
+        lineHeight = HomeDiscoveryLayoutSpec.sectionTitleLineHeight,
+        fontWeight = FontWeight.Bold,
+        color = homeTitleColor,
+        maxLines = HomeDiscoveryLayoutSpec.sectionTitleMaxLines,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.testTag("home_section_title")
     )
 }
 

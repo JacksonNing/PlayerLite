@@ -5,6 +5,8 @@
 
 namespace cachecore {
 
+thread_local const TaskLoop* TaskLoop::current_loop_ = nullptr;
+
 TaskLoop::~TaskLoop() {
     Stop(true);
 }
@@ -77,6 +79,14 @@ bool TaskLoop::PostAndWait(std::function<void()> task) {
     if (!task) {
         return false;
     }
+    if (current_loop_ == this) {
+        try {
+            task();
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
     auto done = std::make_shared<std::promise<void>>();
     auto future = done->get_future();
     const bool posted = Post([task = std::move(task), done]() mutable {
@@ -110,6 +120,8 @@ bool TaskLoop::WaitIdle() {
 }
 
 void TaskLoop::ThreadMain() {
+    const TaskLoop* previous_loop = current_loop_;
+    current_loop_ = this;
     while (true) {
         std::function<void()> task;
         {
@@ -142,6 +154,7 @@ void TaskLoop::ThreadMain() {
             }
         }
     }
+    current_loop_ = previous_loop;
 }
 
 }  // namespace cachecore

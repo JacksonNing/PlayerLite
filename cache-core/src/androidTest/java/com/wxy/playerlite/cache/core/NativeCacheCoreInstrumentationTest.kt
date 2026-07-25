@@ -8,12 +8,14 @@ import com.wxy.playerlite.cache.core.session.OpenSessionParams
 import com.wxy.playerlite.cache.core.session.SessionCacheConfig
 import java.io.File
 import java.nio.ByteBuffer
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -192,6 +194,46 @@ class NativeCacheCoreInstrumentationTest {
         }
     }
 
+    @Test
+    fun nativeEngineBlockedPersistQueryDoesNotHoldSessionLockAndCloseCompletesAfterRelease() {
+        val root = createRoot("cache-core-native-blocked-query")
+        CacheCore.init(CacheCoreConfig(cacheRootDirPath = root.absolutePath)).getOrThrow()
+        val payload = ByteArray(512 * 1024) { (it % 101).toByte() }
+        val provider = BlockingQueryProvider(payload)
+        val session = CacheCore.openSession(
+            OpenSessionParams(
+                resourceKey = "native_blocked_query",
+                provider = provider,
+                config = SessionCacheConfig(blockSizeBytes = 64 * 1024)
+            )
+        ).getOrThrow()
+        val executor = Executors.newFixedThreadPool(2)
+
+        try {
+            assertTrue(provider.awaitQueryStarted())
+
+            val seek = executor.submit<Long> {
+                session.seek(0L, 0).getOrThrow()
+            }
+            assertEquals(0L, seek.get(2, TimeUnit.SECONDS))
+
+            val closeEntered = CountDownLatch(1)
+            val close = executor.submit {
+                closeEntered.countDown()
+                session.close()
+            }
+            assertTrue(closeEntered.await(1, TimeUnit.SECONDS))
+
+            provider.releaseQuery()
+            close.get(5, TimeUnit.SECONDS)
+            assertEquals(1, provider.closeCount.get())
+        } finally {
+            provider.releaseQuery()
+            session.close()
+            executor.shutdownNow()
+        }
+    }
+
     private fun createRoot(prefix: String): File {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         return File(appContext.cacheDir, "$prefix-${System.currentTimeMillis()}").apply {
@@ -208,8 +250,8 @@ class NativeCacheCoreInstrumentationTest {
         )
     ).getOrThrow()
 
-    private class ByteArrayProvider(
-        private val payload: ByteArray
+    private open class ByteArrayProvider(
+        protected val payload: ByteArray
     ) : RangeDataProvider {
         val cancelCount = AtomicInteger(0)
         private val firstReadOffset = AtomicLong(Long.MIN_VALUE)
@@ -246,6 +288,30 @@ class NativeCacheCoreInstrumentationTest {
         fun awaitFirstReadOffset(): Long {
             assertTrue(firstReadStarted.await(5, TimeUnit.SECONDS))
             return firstReadOffset.get()
+        }
+    }
+
+    private class BlockingQueryProvider(
+        payload: ByteArray
+    ) : ByteArrayProvider(payload) {
+        private val queryStarted = CountDownLatch(1)
+        private val queryRelease = CountDownLatch(1)
+        val closeCount = AtomicInteger(0)
+
+        override fun queryContentLength(): Long {
+            queryStarted.countDown()
+            queryRelease.await(5, TimeUnit.SECONDS)
+            return payload.size.toLong()
+        }
+
+        override fun close() {
+            closeCount.incrementAndGet()
+        }
+
+        fun awaitQueryStarted(): Boolean = queryStarted.await(5, TimeUnit.SECONDS)
+
+        fun releaseQuery() {
+            queryRelease.countDown()
         }
     }
 }
