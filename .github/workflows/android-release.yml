@@ -49,15 +49,59 @@ jobs:
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare release signing
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          missing=()
+          [[ -z "$RELEASE_KEYSTORE_BASE64" ]] && missing+=("ANDROID_RELEASE_KEYSTORE_BASE64")
+          [[ -z "$RELEASE_STORE_PASSWORD" ]] && missing+=("ANDROID_RELEASE_STORE_PASSWORD")
+          [[ -z "$RELEASE_KEY_ALIAS" ]] && missing+=("ANDROID_RELEASE_KEY_ALIAS")
+          [[ -z "$RELEASE_KEY_PASSWORD" ]] && missing+=("ANDROID_RELEASE_KEY_PASSWORD")
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing release signing secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$RUNNER_TEMP/player-lite-release.jks"
+
       - name: Build release APK
+        env:
+          PLAYERLITE_RELEASE_STORE_FILE: ${{ runner.temp }}/player-lite-release.jks
+          PLAYERLITE_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          PLAYERLITE_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          PLAYERLITE_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
         run: >
           ./gradlew :app:assembleRelease
           -Pplayerlite.versionName=${{ steps.release-version.outputs.version_name }}
           -Pplayerlite.versionCode=${{ steps.release-version.outputs.version_code }}
 
+      - name: Verify release APK signature
+        shell: bash
+        run: |
+          apk_path="app/build/outputs/apk/release/app-release.apk"
+          if [[ ! -f "$apk_path" ]]; then
+            echo "Signed release APK not found: $apk_path" >&2
+            exit 1
+          fi
+          apksigner_path="$(
+            find "$ANDROID_HOME/build-tools" -type f -name apksigner \
+              | sort -V \
+              | tail -n 1
+          )"
+          if [[ -z "$apksigner_path" ]]; then
+            echo "apksigner not found under $ANDROID_HOME/build-tools" >&2
+            exit 1
+          fi
+          "$apksigner_path" verify --verbose --print-certs "$apk_path"
+
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true

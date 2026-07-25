@@ -13,12 +13,38 @@ val appVersionCode = providers.gradleProperty("playerlite.versionCode")
     .map { it.toInt() }
     .orElse(2000)
     .get()
+val releaseStoreFile = providers.environmentVariable("PLAYERLITE_RELEASE_STORE_FILE")
+val releaseStorePassword = providers.environmentVariable("PLAYERLITE_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = providers.environmentVariable("PLAYERLITE_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = providers.environmentVariable("PLAYERLITE_RELEASE_KEY_PASSWORD")
+val releaseSigningValues = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+val hasReleaseSigningConfig = releaseSigningValues.all { it.isPresent }
+
+require(releaseSigningValues.none { it.isPresent } || hasReleaseSigningConfig) {
+    "Release signing configuration is incomplete"
+}
 
 android {
     namespace = "com.wxy.playerlite"
     ndkVersion = "27.0.12077973"
     buildFeatures {
         buildConfig = true
+    }
+
+    signingConfigs {
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                storeFile = file(releaseStoreFile.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
     }
 
     defaultConfig {
@@ -35,6 +61,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfigs.findByName("release")?.let {
+                signingConfig = it
+            }
         }
     }
 }
