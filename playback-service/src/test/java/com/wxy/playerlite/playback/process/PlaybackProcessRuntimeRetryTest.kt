@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -99,6 +100,7 @@ class PlaybackProcessRuntimeRetryTest {
     @Test
     fun playCurrent_whenTransientConnectionRecovers_shouldContinueCurrentTrack() = runBlocking {
         val appContext = RuntimeEnvironment.getApplication() as Context
+        val trackPreparer = ReadyTrackPreparer()
         val runtime = PlaybackProcessRuntime(
             appContext = appContext,
             serviceScope = serviceScope,
@@ -111,7 +113,7 @@ class PlaybackProcessRuntimeRetryTest {
                     successHoldMs = 300L
                 )
             },
-            trackPreparer = ReadyTrackPreparer()
+            trackPreparer = trackPreparer
         )
 
         runtime.setQueue(mediaItems = listOf(onlineItem().toMediaItem()), startIndex = 0)
@@ -132,6 +134,7 @@ class PlaybackProcessRuntimeRetryTest {
         assertTrue("state=$recovered", recovered.positionMs >= 42_000L)
         assertTrue("state=$recovered", recovered.statusText.startsWith("Playing"))
         assertTrue("state=$recovered", recovered.currentTrack?.id == "queue:test:0:track-1")
+        assertEquals(2, trackPreparer.prepareCalls)
     }
 
     @Test
@@ -191,14 +194,16 @@ class PlaybackProcessRuntimeRetryTest {
 }
 
 private class ReadyTrackPreparer : TrackPreparer {
-    private val source = ReadyRetrySource()
+    var prepareCalls: Int = 0
+        private set
 
     override suspend fun prepare(
         item: PlaybackTrack,
         preferredAudioQuality: com.wxy.playerlite.playback.model.PlaybackAudioQuality
     ): PreparationResult {
+        prepareCalls += 1
         return PreparationResult.Ready(
-            source = source,
+            source = ReadyRetrySource(),
             mediaMeta = AudioMetaDisplay(
                 codec = "aac",
                 sampleRate = "44100 Hz",
@@ -213,17 +218,29 @@ private class ReadyTrackPreparer : TrackPreparer {
 }
 
 private class ReadyRetrySource : IPlaysource {
+    private var closed = false
+
     override val sourceId: String = "retry-ready-source"
 
     override fun setSourceMode(mode: IPlaysource.SourceMode) = Unit
 
-    override fun open(): IPlaysource.AudioSourceCode = IPlaysource.AudioSourceCode.ASC_SUCCESS
+    override fun open(): IPlaysource.AudioSourceCode {
+        return if (closed) {
+            IPlaysource.AudioSourceCode.ASC_ABORT
+        } else {
+            IPlaysource.AudioSourceCode.ASC_SUCCESS
+        }
+    }
 
     override fun stop() = Unit
 
-    override fun abort() = Unit
+    override fun abort() {
+        closed = true
+    }
 
-    override fun close() = Unit
+    override fun close() {
+        closed = true
+    }
 
     override fun size(): Long = 180_000L
 
@@ -256,15 +273,19 @@ private class RetryingNativePlayer(
     override fun setAudioEffectPreset(audioEffectPreset: AudioEffectPreset): Int = 0
 
     override fun playFromSource(source: IPlaysource): Int {
-        Thread.sleep(delayPerAttemptMs)
-        val code = playCodes.removeFirstOrNull() ?: -1234
-        if (code == 0) {
-            recoveredProgressMs?.let { progressListener?.invoke(it) }
-            if (successHoldMs > 0L) {
-                Thread.sleep(successHoldMs)
+        return try {
+            Thread.sleep(delayPerAttemptMs)
+            val code = playCodes.removeFirstOrNull() ?: -1234
+            if (code == 0) {
+                recoveredProgressMs?.let { progressListener?.invoke(it) }
+                if (successHoldMs > 0L) {
+                    Thread.sleep(successHoldMs)
+                }
             }
+            code
+        } finally {
+            source.close()
         }
-        return code
     }
 
     override fun pause(): Int = 0

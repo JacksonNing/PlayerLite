@@ -889,6 +889,9 @@ internal class PlaybackProcessRuntime(
                 activePlaybackTrackId = null
                 pendingSeekPositionMs = null
                 pendingAudioQualitySwitchTarget = null
+                // NativePlayer closes the IPlaysource when playFromSource returns.
+                // Do not retain that terminal source for retry, repeat, or a later manual replay.
+                releasePreparedSourceSession()
                 completionAction = PlaybackCompletionAction.resolve(
                     playCode = playCode,
                     activeIndex = _state.value.activeIndex,

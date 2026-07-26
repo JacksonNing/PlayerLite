@@ -15,6 +15,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+/signing/
+*.jks
+*.keystore
+keystore.properties
 /.opencode/
 /.worktrees/
 

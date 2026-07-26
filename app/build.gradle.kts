@@ -1,6 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("playerlite.android.application")
     id("playerlite.android.compose")
+}
+
+val localReleaseSigningProperties = Properties()
+val localReleaseSigningPropertiesFile = rootProject.file("keystore.properties")
+if (localReleaseSigningPropertiesFile.isFile) {
+    localReleaseSigningPropertiesFile.inputStream().use(localReleaseSigningProperties::load)
 }
 
 val apiBaseUrl = providers.gradleProperty("playerlite.apiBaseUrl")
@@ -14,9 +22,13 @@ val appVersionCode = providers.gradleProperty("playerlite.versionCode")
     .orElse(2000)
     .get()
 val releaseStoreFile = providers.environmentVariable("PLAYERLITE_RELEASE_STORE_FILE")
+    .orElse(providers.provider { localReleaseSigningProperties.getProperty("storeFile") })
 val releaseStorePassword = providers.environmentVariable("PLAYERLITE_RELEASE_STORE_PASSWORD")
+    .orElse(providers.provider { localReleaseSigningProperties.getProperty("storePassword") })
 val releaseKeyAlias = providers.environmentVariable("PLAYERLITE_RELEASE_KEY_ALIAS")
+    .orElse(providers.provider { localReleaseSigningProperties.getProperty("keyAlias") })
 val releaseKeyPassword = providers.environmentVariable("PLAYERLITE_RELEASE_KEY_PASSWORD")
+    .orElse(providers.provider { localReleaseSigningProperties.getProperty("keyPassword") })
 val releaseSigningValues = listOf(
     releaseStoreFile,
     releaseStorePassword,
@@ -39,7 +51,7 @@ android {
     signingConfigs {
         if (hasReleaseSigningConfig) {
             create("release") {
-                storeFile = file(releaseStoreFile.get())
+                storeFile = rootProject.file(releaseStoreFile.get())
                 storePassword = releaseStorePassword.get()
                 keyAlias = releaseKeyAlias.get()
                 keyPassword = releaseKeyPassword.get()
