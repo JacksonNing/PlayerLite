@@ -60,8 +60,10 @@ class PlaylistSheetVisualsTest {
             visualTokens = visualTokens
         )
 
-        assertEquals(visualTokens.accentStrong.copy(alpha = 0.045f), active.containerColor)
+        assertEquals(visualTokens.accentStrong.copy(alpha = 0.055f), active.containerColor)
         assertEquals(visualTokens.accentStrong, active.titleColor)
+        assertEquals(visualTokens.textMuted, active.subtitleColor)
+        assertEquals(null, active.border)
         assertTrue(!active.raised)
         assertEquals(Color.Transparent, inactive.containerColor)
         assertEquals(PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface, inactive.titleColor)
@@ -144,6 +146,34 @@ class PlaylistSheetVisualsTest {
     }
 
     @Test
+    fun playlistBottomSheet_shouldNotClipFirstRowWhenActiveItemIsAlreadyVisible() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                Box(modifier = Modifier.size(width = 360.dp, height = 760.dp)) {
+                    PlaylistBottomSheet(
+                        visible = true,
+                        items = buildPlaylistItems(prefix = "visible").take(10),
+                        activeIndex = 1,
+                        playbackMode = PlaybackMode.LIST_LOOP,
+                        showOriginalOrderInShuffle = false,
+                        canReorder = true,
+                        onDismiss = {},
+                        onShowOriginalOrderInShuffleChange = {},
+                        onSelect = {},
+                        onRemove = {},
+                        onMove = { _, _ -> }
+                    )
+                }
+            }
+        }
+
+        waitUntilFirstVisibleIndex(expected = 0)
+        composeRule
+            .onNodeWithTag("playlist_sheet_artwork_visible-0", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun playlistBottomSheet_rows_shouldUseBalancedVerticalDensity() {
         val items = buildPlaylistItems(prefix = "density")
 
@@ -180,20 +210,20 @@ class PlaylistSheetVisualsTest {
         val rowGap = with(composeRule.density) { (nextRowBounds.top - activeRowBounds.bottom).toDp() }
 
         assertTrue(
-            "Expected active queue row to keep enough breathing room, but height was $activeHeight",
-            activeHeight >= 72.dp
+            "Expected queue row to remain comfortably tappable, but height was $activeHeight",
+            activeHeight >= 64.dp
         )
         assertTrue(
-            "Expected active queue row to avoid oversized card spacing, but height was $activeHeight",
-            activeHeight <= 88.dp
+            "Expected queue row to stay compact, but height was $activeHeight",
+            activeHeight <= 74.dp
         )
         assertTrue(
-            "Expected queue row gap to avoid cramped rows, but gap was $rowGap",
-            rowGap >= 8.dp
+            "Expected continuous queue rows without card gaps, but gap was $rowGap",
+            rowGap >= 0.dp
         )
         assertTrue(
-            "Expected queue row gap to avoid oversized card spacing, but gap was $rowGap",
-            rowGap <= 20.dp
+            "Expected only a thin divider between queue rows, but gap was $rowGap",
+            rowGap <= 2.dp
         )
     }
 
@@ -318,6 +348,130 @@ class PlaylistSheetVisualsTest {
         composeRule.runOnIdle {
             assertEquals(2, cycleCount)
         }
+    }
+
+    @Test
+    fun playlistBottomSheet_shouldOnlyShowDragHandlesWhileSorting() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                PlaylistBottomSheet(
+                    visible = true,
+                    items = listOf(
+                        PlaylistItem(
+                            id = "sort-1",
+                            uri = "file:///sort-1.mp3",
+                            displayName = "歌曲 1"
+                        ),
+                        PlaylistItem(
+                            id = "sort-2",
+                            uri = "file:///sort-2.mp3",
+                            displayName = "歌曲 2"
+                        )
+                    ),
+                    activeIndex = 0,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    showOriginalOrderInShuffle = false,
+                    canReorder = true,
+                    onDismiss = {},
+                    onShowOriginalOrderInShuffleChange = {},
+                    onSelect = {},
+                    onRemove = {},
+                    onMove = { _, _ -> }
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithTag("playlist_sheet_active_indicator_sort-1", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag("playlist_sheet_drag_handle_sort-1", useUnmergedTree = true)
+            .assertCountEquals(0)
+        composeRule.onNodeWithTag("playlist_sheet_more_sort-1").assertIsDisplayed()
+        composeRule.onNodeWithText("排序").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("playlist_sheet_reorder_toggle")
+            .performSemanticsAction(SemanticsActions.OnClick)
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("playlist_sheet_reorder_toggle").assertIsDisplayed()
+        composeRule
+            .onAllNodesWithTag("playlist_sheet_drag_handle_sort-1", useUnmergedTree = true)
+            .assertCountEquals(1)
+        composeRule
+            .onAllNodesWithTag("playlist_sheet_active_indicator_sort-1", useUnmergedTree = true)
+            .assertCountEquals(0)
+        composeRule.onNodeWithTag("playlist_sheet_more_sort-1").assertIsDisplayed()
+    }
+
+    @Test
+    fun playlistBottomSheet_moreMenu_shouldFloatWithoutChangingQueueItemLayout() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                PlaylistBottomSheet(
+                    visible = true,
+                    items = listOf(
+                        PlaylistItem(
+                            id = "queue-1",
+                            uri = "https://example.com/queue-1.mp3",
+                            displayName = "夜曲",
+                            songId = "song-1",
+                            title = "夜曲",
+                            artistText = "周杰伦"
+                        ),
+                        PlaylistItem(
+                            id = "queue-2",
+                            uri = "https://example.com/queue-2.mp3",
+                            displayName = "稻香",
+                            songId = "song-2",
+                            title = "稻香",
+                            artistText = "周杰伦"
+                        )
+                    ),
+                    activeIndex = 0,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    showOriginalOrderInShuffle = false,
+                    canReorder = true,
+                    onDismiss = {},
+                    onShowOriginalOrderInShuffleChange = {},
+                    onSelect = {},
+                    onRemove = {},
+                    onMove = { _, _ -> }
+                )
+            }
+        }
+
+        val firstItemBoundsBefore = composeRule
+            .onNodeWithTag("playlist_sheet_item_queue-1")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val secondItemBoundsBefore = composeRule
+            .onNodeWithTag("playlist_sheet_item_queue-2")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        composeRule.onNodeWithTag("playlist_sheet_more_queue-1")
+            .performSemanticsAction(SemanticsActions.OnClick)
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithTag("playlist_sheet_action_detail_queue-1").assertCountEquals(1)
+
+        val firstItemBoundsAfter = composeRule
+            .onNodeWithTag("playlist_sheet_item_queue-1")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val secondItemBoundsAfter = composeRule
+            .onNodeWithTag("playlist_sheet_item_queue-2")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertTrue(
+            "More menu should not change the current queue item height",
+            kotlin.math.abs(firstItemBoundsBefore.height - firstItemBoundsAfter.height) < 1f
+        )
+        assertTrue(
+            "More menu should float instead of pushing the next queue item",
+            kotlin.math.abs(secondItemBoundsBefore.top - secondItemBoundsAfter.top) < 1f
+        )
     }
 
     @Test

@@ -3481,8 +3481,11 @@ class PlayerScreenRobolectricTest {
         composeRule.onNodeWithTag("playlist_sheet_surface").assertIsDisplayed()
         composeRule.onAllNodesWithText("点击切换").assertCountEquals(0)
         composeRule.onAllNodesWithText("当前激活").assertCountEquals(0)
-        composeRule.onNodeWithTag("playlist_sheet_drag_handle_track-1", useUnmergedTree = true)
+        composeRule.onNodeWithTag("playlist_sheet_active_indicator_track-1", useUnmergedTree = true)
             .assertIsDisplayed()
+        composeRule.onAllNodesWithTag("playlist_sheet_drag_handle_track-1", useUnmergedTree = true)
+            .assertCountEquals(0)
+        composeRule.onNodeWithTag("playlist_sheet_reorder_toggle").assertIsDisplayed()
     }
 
     @Test

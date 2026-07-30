@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,15 +36,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,11 +59,13 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,8 +74,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +83,7 @@ import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import com.wxy.playerlite.playback.model.PlaybackMode
+import kotlinx.coroutines.flow.first
 
 val PlaylistSheetFirstVisibleIndexKey =
     SemanticsPropertyKey<Int>("PlaylistSheetFirstVisibleIndex")
@@ -144,21 +149,25 @@ fun PlaylistBottomSheet(
     val visualTokens = PlayerLiteVisualTheme.colors
     val brandPalette = PlayerLiteThemeContract.DefaultBrandPalettes.light
     val scrimInteraction = remember { MutableInteractionSource() }
-    val reorderStepPx = with(LocalDensity.current) { 88.dp.toPx() }
+    val reorderStepPx = with(LocalDensity.current) { 65.dp.toPx() }
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     var draggingIndex by remember { mutableIntStateOf(-1) }
     var draggingOffsetY by remember { mutableFloatStateOf(0f) }
     var expandedMenuItemId by remember { mutableStateOf<String?>(null) }
+    var reorderModeEnabled by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val activeScrollTarget = items.getOrNull(activeIndex)?.id?.let { itemId ->
         itemId to activeIndex
     }
     var lastAutoScrolledTarget by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
-    LaunchedEffect(visible) {
-        if (!visible) {
+    LaunchedEffect(visible, canReorder) {
+        if (!visible || !canReorder) {
             lastAutoScrolledTarget = null
             expandedMenuItemId = null
+            reorderModeEnabled = false
+            draggingIndex = -1
+            draggingOffsetY = 0f
         }
     }
 
@@ -172,7 +181,12 @@ fun PlaylistBottomSheet(
             return@LaunchedEffect
         }
 
-        listState.scrollToItem(index = target.second)
+        val visibleIndexes = snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo.map { itemInfo -> itemInfo.index }
+        }.first { indexes -> indexes.isNotEmpty() }
+        if (target.second !in visibleIndexes) {
+            listState.scrollToItem(index = target.second)
+        }
         lastAutoScrolledTarget = target
     }
 
@@ -193,10 +207,11 @@ fun PlaylistBottomSheet(
                 viewportWidthDp = maxWidth.value,
                 viewportHeightDp = maxHeight.value
             )
+            val stackHeaderActions = maxWidth < 380.dp
             val surfaceShape = if (layoutSpec.isLandscape) {
-                RoundedCornerShape(28.dp)
+                RoundedCornerShape(22.dp)
             } else {
-                RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             }
             val surfaceModifier = if (layoutSpec.isLandscape) {
                 Modifier
@@ -232,96 +247,52 @@ fun PlaylistBottomSheet(
                 shape = surfaceShape,
                 color = brandPalette.neutral,
                 tonalElevation = 0.dp,
-                shadowElevation = 24.dp,
+                shadowElevation = 16.dp,
                 border = BorderStroke(
                     width = 1.dp,
-                    color = visualTokens.dividerSubtle.copy(alpha = 0.55f)
+                    color = visualTokens.dividerSubtle.copy(alpha = 0.42f)
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            start = 20.dp,
-                            top = 14.dp,
-                            end = 20.dp,
-                            bottom = 14.dp + navigationBottomPadding
+                            top = 10.dp,
+                            bottom = navigationBottomPadding
                         ),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
-                            .size(width = 42.dp, height = 4.dp)
+                            .size(width = 40.dp, height = 4.dp)
                             .clip(CircleShape)
                             .background(visualTokens.handleMuted)
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "接下来播放",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "当前播放队列 • ${items.size} 首",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = visualTokens.textMuted
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .clickable(onClick = onCyclePlaybackMode)
-                                    .testTag("playlist_sheet_mode_button")
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = playbackMode.icon(),
-                                    contentDescription = null,
-                                    tint = visualTokens.accentStrong,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = playbackMode.label(),
-                                    color = visualTokens.accentStrong
-                                )
-                            }
-                            if (items.isNotEmpty()) {
-                                TextButton(
-                                    onClick = onClearAll,
-                                    modifier = Modifier.testTag("playlist_sheet_clear_all")
-                                ) {
-                                    Text(
-                                        text = "清空",
-                                        color = visualTokens.accentStrong
-                                    )
-                                }
-                            }
-                            IconButton(onClick = onDismiss) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "关闭播放列表"
-                                )
-                            }
-                        }
-                    }
+                    PlaylistSheetHeader(
+                        stackActions = stackHeaderActions,
+                        itemCount = items.size,
+                        playbackMode = playbackMode,
+                        canReorder = canReorder,
+                        reorderModeEnabled = reorderModeEnabled,
+                        visualTokens = visualTokens,
+                        onCyclePlaybackMode = onCyclePlaybackMode,
+                        onToggleReorder = {
+                            reorderModeEnabled = !reorderModeEnabled
+                            draggingIndex = -1
+                            draggingOffsetY = 0f
+                            expandedMenuItemId = null
+                        },
+                        onClearAll = onClearAll,
+                        onDismiss = onDismiss
+                    )
 
                     if (playbackMode == PlaybackMode.SHUFFLE) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -335,6 +306,27 @@ fun PlaylistBottomSheet(
                             )
                         }
                     }
+
+                    Text(
+                        text = if (reorderModeEnabled) {
+                            "长按歌曲并拖动调整顺序"
+                        } else {
+                            "点击排序后，长按歌曲调整顺序"
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 12.dp)
+                            .testTag("playlist_sheet_reorder_hint"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = visualTokens.textMuted
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(visualTokens.dividerSubtle.copy(alpha = 0.56f))
+                    )
 
                     if (items.isEmpty()) {
                         Box(
@@ -354,10 +346,10 @@ fun PlaylistBottomSheet(
                                 .testTag("playlist_sheet_list")
                                 .semantics {
                                     playlistSheetFirstVisibleIndex = listState.firstVisibleItemIndex
-                                },
+                            },
                             state = listState,
-                            contentPadding = PaddingValues(top = 10.dp, bottom = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            contentPadding = PaddingValues(bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
                             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                                 val isActive = index == activeIndex
@@ -367,7 +359,7 @@ fun PlaylistBottomSheet(
                                 val itemVisuals = resolvePlaylistSheetItemVisuals(
                                     isActive = isActive,
                                     isDragging = isDragging,
-                                    canReorder = canReorder,
+                                    canReorder = canReorder && reorderModeEnabled,
                                     visualTokens = visualTokens
                                 )
                                 Surface(
@@ -382,10 +374,15 @@ fun PlaylistBottomSheet(
                                             scaleY = if (isDragging) 1.01f else 1f
                                         }
                                         .let { baseModifier ->
-                                            if (!canReorder) {
+                                            if (!canReorder || !reorderModeEnabled) {
                                                 baseModifier
                                             } else {
-                                                baseModifier.pointerInput(items.size, index, reorderStepPx) {
+                                                baseModifier.pointerInput(
+                                                    items.size,
+                                                    index,
+                                                    reorderStepPx,
+                                                    reorderModeEnabled
+                                                ) {
                                                     detectDragGesturesAfterLongPress(
                                                         onDragStart = {
                                                             draggingIndex = index
@@ -429,39 +426,55 @@ fun PlaylistBottomSheet(
                                             }
                                         }
                                         .clickable(enabled = !isDragging) { onSelect(index) },
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = if (isDragging) RoundedCornerShape(12.dp) else RectangleShape,
                                     color = itemVisuals.containerColor,
                                     tonalElevation = if (itemVisuals.raised) 1.dp else 0.dp,
                                     shadowElevation = if (itemVisuals.raised) 3.dp else 0.dp,
                                     border = itemVisuals.border
                                 ) {
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .testTag("playlist_sheet_item_row_${item.id}")
-                                                .defaultMinSize(minHeight = 64.dp),
+                                                .defaultMinSize(minHeight = 64.dp)
+                                                .padding(horizontal = 20.dp),
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            if (isActive) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(width = 3.dp, height = 34.dp)
-                                                        .clip(RoundedCornerShape(999.dp))
-                                                        .background(itemVisuals.titleColor.copy(alpha = 0.86f))
-                                                )
+                                            Box(
+                                                modifier = Modifier.size(width = 28.dp, height = 44.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                when {
+                                                    reorderModeEnabled -> {
+                                                        PlaylistSheetDragHandle(
+                                                            tint = itemVisuals.dragHandleTint,
+                                                            enabled = canReorder,
+                                                            modifier = Modifier
+                                                                .testTag("playlist_sheet_drag_handle_${item.id}")
+                                                        )
+                                                    }
+
+                                                    isActive -> {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.GraphicEq,
+                                                            contentDescription = "当前播放",
+                                                            tint = itemVisuals.titleColor,
+                                                            modifier = Modifier
+                                                                .size(24.dp)
+                                                                .testTag("playlist_sheet_active_indicator_${item.id}")
+                                                        )
+                                                    }
+                                                }
                                             }
                                             Surface(
                                                 modifier = Modifier
-                                                    .size(if (isActive) 48.dp else 46.dp)
+                                                    .size(44.dp)
                                                     .testTag("playlist_sheet_artwork_${item.id}"),
-                                                shape = RoundedCornerShape(13.dp),
+                                                shape = RoundedCornerShape(10.dp),
                                                 color = itemVisuals.artworkFallbackContainerColor
                                             ) {
                                                 if (!item.coverUrl.isNullOrBlank()) {
@@ -501,53 +514,38 @@ fun PlaylistBottomSheet(
                                                     overflow = TextOverflow.Ellipsis
                                                 )
                                             }
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(38.dp)
-                                                    .clip(CircleShape)
-                                                    .background(visualTokens.surfaceMuted.copy(alpha = 0.46f))
-                                                    .clickable {
-                                                        if (expandedMenuItemIdOverride != null) {
-                                                            return@clickable
-                                                        }
-                                                        expandedMenuItemId = if (menuExpanded) {
-                                                            null
-                                                        } else {
-                                                            item.id
-                                                        }
-                                                    }
-                                                    .testTag("playlist_sheet_more_${item.id}"),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.MoreVert,
-                                                    contentDescription = "更多操作"
-                                                )
-                                            }
+                                            Box {
+                                                IconButton(
+                                                    onClick = {
+                                                            if (expandedMenuItemIdOverride != null) {
+                                                                return@IconButton
+                                                            }
+                                                            expandedMenuItemId = if (menuExpanded) {
+                                                                null
+                                                            } else {
+                                                                item.id
+                                                            }
+                                                    },
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .testTag("playlist_sheet_more_${item.id}")
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.MoreVert,
+                                                        contentDescription = "更多操作",
+                                                        tint = visualTokens.textSecondary,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                }
 
-                                            PlaylistSheetDragHandle(
-                                                tint = itemVisuals.dragHandleTint,
-                                                containerColor = itemVisuals.dragHandleContainerColor,
-                                                enabled = canReorder,
-                                                modifier = Modifier
-                                                    .testTag("playlist_sheet_drag_handle_${item.id}")
-                                            )
-                                        }
-
-                                        if (menuExpanded) {
-                                            Surface(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .testTag("playlist_sheet_more_panel_${item.id}"),
-                                                shape = RoundedCornerShape(18.dp),
-                                                color = visualTokens.surfaceMuted,
-                                                border = BorderStroke(
-                                                    width = 1.dp,
-                                                    color = visualTokens.dividerSubtle.copy(alpha = 0.6f)
-                                                )
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.fillMaxWidth()
+                                                DropdownMenu(
+                                                    expanded = menuExpanded,
+                                                    onDismissRequest = {
+                                                        expandedMenuItemId = null
+                                                    },
+                                                    modifier = Modifier
+                                                        .widthIn(min = 180.dp)
+                                                        .testTag("playlist_sheet_more_panel_${item.id}")
                                                 ) {
                                                     if (item.songId?.isNotBlank() == true || item.uri.isNotBlank()) {
                                                         PlaylistSheetActionRow(
@@ -582,6 +580,7 @@ fun PlaylistBottomSheet(
                                                     PlaylistSheetActionRow(
                                                         label = "移出播放队列",
                                                         tag = "playlist_sheet_action_remove_${item.id}",
+                                                        destructive = true,
                                                         onClick = {
                                                             expandedMenuItemId = null
                                                             onRemove(index)
@@ -590,6 +589,17 @@ fun PlaylistBottomSheet(
                                                 }
                                             }
                                         }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 74.dp, end = 20.dp)
+                                                .height(1.dp)
+                                                .background(
+                                                    visualTokens.dividerSubtle.copy(alpha = 0.50f)
+                                                )
+                                                .testTag("playlist_sheet_divider_${item.id}")
+                                        )
                                     }
                                 }
                             }
@@ -598,6 +608,191 @@ fun PlaylistBottomSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlaylistSheetHeader(
+    stackActions: Boolean,
+    itemCount: Int,
+    playbackMode: PlaybackMode,
+    canReorder: Boolean,
+    reorderModeEnabled: Boolean,
+    visualTokens: com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens,
+    onCyclePlaybackMode: () -> Unit,
+    onToggleReorder: () -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (stackActions) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 10.dp, end = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                PlaylistSheetHeaderTitle(
+                    itemCount = itemCount,
+                    visualTokens = visualTokens
+                )
+                PlaylistSheetCloseButton(onDismiss = onDismiss)
+            }
+            PlaylistSheetHeaderActions(
+                modifier = Modifier.fillMaxWidth(),
+                itemCount = itemCount,
+                playbackMode = playbackMode,
+                canReorder = canReorder,
+                reorderModeEnabled = reorderModeEnabled,
+                visualTokens = visualTokens,
+                includeClose = false,
+                onCyclePlaybackMode = onCyclePlaybackMode,
+                onToggleReorder = onToggleReorder,
+                onClearAll = onClearAll,
+                onDismiss = onDismiss
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 10.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlaylistSheetHeaderTitle(
+                itemCount = itemCount,
+                visualTokens = visualTokens,
+                modifier = Modifier.weight(1f)
+            )
+            PlaylistSheetHeaderActions(
+                itemCount = itemCount,
+                playbackMode = playbackMode,
+                canReorder = canReorder,
+                reorderModeEnabled = reorderModeEnabled,
+                visualTokens = visualTokens,
+                includeClose = true,
+                onCyclePlaybackMode = onCyclePlaybackMode,
+                onToggleReorder = onToggleReorder,
+                onClearAll = onClearAll,
+                onDismiss = onDismiss
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistSheetHeaderTitle(
+    itemCount: Int,
+    visualTokens: com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "接下来播放",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "$itemCount 首歌曲",
+            style = MaterialTheme.typography.bodySmall,
+            color = visualTokens.textMuted
+        )
+    }
+}
+
+@Composable
+private fun PlaylistSheetHeaderActions(
+    itemCount: Int,
+    playbackMode: PlaybackMode,
+    canReorder: Boolean,
+    reorderModeEnabled: Boolean,
+    visualTokens: com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens,
+    includeClose: Boolean,
+    onCyclePlaybackMode: () -> Unit,
+    onToggleReorder: () -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onCyclePlaybackMode)
+                .testTag("playlist_sheet_mode_button")
+                .padding(horizontal = 6.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = playbackMode.icon(),
+                contentDescription = null,
+                tint = visualTokens.accentStrong,
+                modifier = Modifier.size(17.dp)
+            )
+            Text(
+                text = playbackMode.label(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = visualTokens.accentStrong
+            )
+        }
+        if (canReorder && itemCount > 1) {
+            TextButton(
+                onClick = onToggleReorder,
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 44.dp)
+                    .testTag("playlist_sheet_reorder_toggle"),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = if (reorderModeEnabled) "完成" else "排序",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = visualTokens.accentStrong
+                )
+            }
+        }
+        if (itemCount > 0) {
+            TextButton(
+                onClick = onClearAll,
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 44.dp)
+                    .testTag("playlist_sheet_clear_all"),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = "清空",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = visualTokens.accentStrong
+                )
+            }
+        }
+        if (includeClose) {
+            PlaylistSheetCloseButton(onDismiss = onDismiss)
+        }
+    }
+}
+
+@Composable
+private fun PlaylistSheetCloseButton(onDismiss: () -> Unit) {
+    IconButton(
+        onClick = onDismiss,
+        modifier = Modifier.size(40.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Close,
+            contentDescription = "关闭播放列表",
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -613,23 +808,25 @@ private fun PlaybackMode.label(): String {
 private fun PlaylistSheetActionRow(
     label: String,
     tag: String,
+    destructive: Boolean = false,
     onClick: () -> Unit
 ) {
-    TextButton(
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (destructive) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
+        },
         onClick = onClick,
         modifier = Modifier
-            .fillMaxWidth()
             .testTag(tag)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Start
-        )
-    }
+    )
 }
 
 private fun PlaybackMode.icon() = when (this) {
@@ -643,7 +840,6 @@ data class PlaylistSheetItemVisuals(
     val titleColor: Color,
     val subtitleColor: Color,
     val dragHandleTint: Color,
-    val dragHandleContainerColor: Color,
     val artworkFallbackContainerColor: Color,
     val border: BorderStroke?,
     val raised: Boolean
@@ -662,26 +858,21 @@ fun resolvePlaylistSheetItemVisuals(
     return when {
         isDragging -> PlaylistSheetItemVisuals(
             containerColor = visualTokens.surfaceRaised,
-            titleColor = visualTokens.accentStrong,
-            subtitleColor = visualTokens.accentStrong.copy(alpha = 0.84f),
+            titleColor = PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface,
+            subtitleColor = visualTokens.textMuted,
             dragHandleTint = visualTokens.accentStrong,
-            dragHandleContainerColor = visualTokens.accentStrong.copy(alpha = 0.10f),
             artworkFallbackContainerColor = visualTokens.accentStrong.copy(alpha = 0.10f),
             border = baseBorder,
             raised = true
         )
 
         isActive -> PlaylistSheetItemVisuals(
-            containerColor = visualTokens.accentStrong.copy(alpha = 0.045f),
+            containerColor = visualTokens.accentStrong.copy(alpha = 0.055f),
             titleColor = visualTokens.accentStrong,
-            subtitleColor = visualTokens.accentStrong.copy(alpha = 0.82f),
+            subtitleColor = visualTokens.textMuted,
             dragHandleTint = visualTokens.accentStrong,
-            dragHandleContainerColor = visualTokens.accentStrong.copy(alpha = 0.08f),
             artworkFallbackContainerColor = visualTokens.accentStrong.copy(alpha = 0.10f),
-            border = BorderStroke(
-                width = 1.dp,
-                color = visualTokens.accentStrong.copy(alpha = 0.14f)
-            ),
+            border = null,
             raised = false
         )
 
@@ -690,7 +881,6 @@ fun resolvePlaylistSheetItemVisuals(
             titleColor = PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface,
             subtitleColor = visualTokens.textMuted,
             dragHandleTint = visualTokens.textSecondary,
-            dragHandleContainerColor = visualTokens.surfaceMuted.copy(alpha = if (canReorder) 0.55f else 0.30f),
             artworkFallbackContainerColor = visualTokens.surfaceMuted.copy(alpha = 0.85f),
             border = null,
             raised = false
@@ -708,35 +898,19 @@ fun resolvePlaylistSheetItemSubtitle(item: PlaylistItem): String {
 @Composable
 private fun PlaylistSheetDragHandle(
     tint: Color,
-    containerColor: Color,
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .size(38.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(containerColor),
+            .size(28.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            repeat(3) {
-                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    repeat(2) {
-                        Box(
-                            modifier = Modifier
-                                .size(3.5.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (enabled) tint else tint.copy(alpha = 0.35f)
-                                )
-                        )
-                    }
-                }
-            }
-        }
+        Icon(
+            imageVector = Icons.Rounded.DragHandle,
+            contentDescription = "拖动调整顺序",
+            tint = if (enabled) tint else tint.copy(alpha = 0.35f),
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
