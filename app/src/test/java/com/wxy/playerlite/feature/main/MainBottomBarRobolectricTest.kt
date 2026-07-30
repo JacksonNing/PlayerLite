@@ -23,7 +23,7 @@ class MainBottomBarRobolectricTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun mainBottomBar_shouldRenderAsCenteredCompactCapsule() {
+    fun mainBottomBar_shouldRenderAsCompactFloatingDock() {
         composeRule.setContent {
             PlayerLiteTheme {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -61,13 +61,17 @@ class MainBottomBarRobolectricTest {
             .boundsInRoot
 
         assertTrue(
-            "Expected floating bottom bar to be narrower than the root width, root=$bottomBarRootBounds container=$containerBounds",
+            "Expected floating bottom bar to remain narrower than its root, root=$bottomBarRootBounds container=$containerBounds",
             containerBounds.width < bottomBarRootBounds.width
+        )
+        assertTrue(
+            "Expected bottom bar to preserve horizontal page insets, screen=$screenBounds container=$containerBounds",
+            containerBounds.width < screenBounds.width
         )
         val containerHeightDp = with(composeRule.density) { containerBounds.height.toDp() }
         assertTrue(
-            "Expected floating bottom bar height to match the 72dp target, but was $containerHeightDp",
-            containerHeightDp in 70.dp..74.dp
+            "Expected bottom bar height to match the 60dp mini-player rhythm, but was $containerHeightDp",
+            containerHeightDp in 58.dp..62.dp
         )
         val selectedIndicatorNodes = composeRule
             .onAllNodesWithTag("main_bottom_bar_home_indicator", useUnmergedTree = true)
@@ -84,7 +88,7 @@ class MainBottomBarRobolectricTest {
         }
         assertTrue(
             "Expected selected label to keep breathing room from the bottom edge, but inset was $labelBottomInsetDp",
-            labelBottomInsetDp >= 10.dp
+            labelBottomInsetDp >= 6.dp
         )
         assertTrue(
             "Expected floating bottom bar to lift off the bottom edge instead of being clipped, but inset was $containerBottomInsetDp",

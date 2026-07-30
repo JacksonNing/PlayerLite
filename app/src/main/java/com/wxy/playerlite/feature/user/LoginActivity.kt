@@ -8,11 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
@@ -20,13 +18,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -35,13 +32,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,11 +49,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -126,7 +126,7 @@ internal fun LoginScreen(
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         AccountPageBackground(
             modifier = Modifier
@@ -135,28 +135,6 @@ internal fun LoginScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            OutlinedButton(
-                onClick = onSkip,
-                enabled = !state.isBusy,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .defaultMinSize(minWidth = 82.dp, minHeight = 44.dp)
-                    .testTag("login_skip_button"),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.48f)
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "跳过",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = AccountVisualStyle.accentDeepColor,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -166,21 +144,28 @@ internal fun LoginScreen(
                     .testTag("login_scroll_content")
                     .padding(
                         start = AccountVisualStyle.contentHorizontalPadding,
-                        top = 52.dp,
+                        top = 12.dp,
                         end = AccountVisualStyle.contentHorizontalPadding,
-                        bottom = 24.dp
+                        bottom = 28.dp
                     ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LoginHeroPanel(state = state)
-                AccountCardSurface(
+                LoginTopBar(
+                    onSkip = onSkip,
+                    skipEnabled = !state.isBusy
+                )
+                Spacer(modifier = Modifier.height(64.dp))
+                LoginIntro()
+                Spacer(modifier = Modifier.height(44.dp))
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = AccountVisualStyle.contentMaxWidth)
-                        .testTag("login_form_card")
+                        .testTag("login_form_section"),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    LoginFormCard(
+                    LoginFormSection(
                         state = state,
                         onLoginMethodSelected = onLoginMethodSelected,
                         onPhoneChanged = onPhoneChanged,
@@ -190,90 +175,85 @@ internal fun LoginScreen(
                         onLogout = onLogout
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
 }
 
 @Composable
-private fun LoginHeroPanel(state: LoginUiState) {
-    Box(
+private fun LoginTopBar(
+    onSkip: () -> Unit,
+    skipEnabled: Boolean
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .widthIn(max = AccountVisualStyle.contentMaxWidth)
-            .testTag("login_hero_panel")
-            .shadow(18.dp, RoundedCornerShape(AccountVisualStyle.heroCorner), clip = false)
-            .clip(RoundedCornerShape(AccountVisualStyle.heroCorner))
-            .background(accountHeroBrush())
-            .padding(horizontal = 22.dp, vertical = 20.dp)
+            .height(48.dp)
+            .testTag("login_brand_header"),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            AccountStatusChip(
-                text = if (state.isLoggedIn) "在线音乐身份已连接" else "PlayerLite 在线音乐身份",
-                modifier = Modifier.testTag("login_status_chip")
+            Image(
+                painter = painterResource(R.drawable.ic_playerlite_brand),
+                contentDescription = null,
+                modifier = Modifier.size(36.dp)
             )
-            LoginHeroArtwork()
             Text(
-                text = LOGIN_WELCOME_TITLE,
-                style = MaterialTheme.typography.headlineMedium,
+                text = "PlayerLite",
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.testTag("login_welcome_title")
+                color = MaterialTheme.colorScheme.onBackground
             )
+        }
+        TextButton(
+            onClick = onSkip,
+            enabled = skipEnabled,
+            modifier = Modifier.testTag("login_skip_button")
+        ) {
             Text(
-                text = LOGIN_WELCOME_SUBTITLE,
+                text = "跳过",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.9f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.testTag("login_welcome_subtitle")
+                color = AccountVisualStyle.accentDeepColor,
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
 
 @Composable
-private fun LoginHeroArtwork() {
-    Box(
-        modifier = Modifier.size(AccountVisualStyle.heroArtworkSize),
-        contentAlignment = Alignment.Center
+private fun LoginIntro() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = AccountVisualStyle.contentMaxWidth)
+            .testTag("login_intro_block"),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(y = 10.dp)
-                .shadow(26.dp, CircleShape, clip = false)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f))
+        Text(
+            text = LOGIN_WELCOME_TITLE,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.testTag("login_welcome_title")
         )
-        Box(
-            modifier = Modifier
-                .size(152.dp)
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.94f),
-                            Color(0xFFFFE8E4)
-                        )
-                    )
-                )
-        )
-        Image(
-            painter = painterResource(R.drawable.ic_playerlite_brand),
-            contentDescription = null,
-            modifier = Modifier.size(110.dp)
+        Text(
+            text = LOGIN_WELCOME_SUBTITLE,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("login_welcome_subtitle")
         )
     }
 }
 
 @Composable
-private fun LoginFormCard(
+private fun LoginFormSection(
     state: LoginUiState,
     onLoginMethodSelected: (LoginMethod) -> Unit,
     onPhoneChanged: (String) -> Unit,
@@ -282,6 +262,8 @@ private fun LoginFormCard(
     onSubmitLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+
     LoginMethodToggle(
         selected = state.loginMethod,
         onSelected = onLoginMethodSelected
@@ -327,7 +309,27 @@ private fun LoginFormCard(
             )
         },
         enabled = !state.isBusy,
-        visualTransformation = PasswordVisualTransformation()
+        trailingIcon = {
+            IconButton(
+                onClick = { passwordVisible = !passwordVisible },
+                enabled = !state.isBusy,
+                modifier = Modifier.testTag("login_password_visibility_button")
+            ) {
+                Icon(
+                    imageVector = if (passwordVisible) {
+                        Icons.Rounded.VisibilityOff
+                    } else {
+                        Icons.Rounded.Visibility
+                    },
+                    contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
+                )
+            }
+        },
+        visualTransformation = if (passwordVisible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        }
     )
 
     AccountPrimaryButton(
@@ -339,13 +341,24 @@ private fun LoginFormCard(
             .testTag("login_primary_button")
     )
 
-    Text(
-        text = state.statusText,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth()
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.VerifiedUser,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = state.statusText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+    }
 
     if (state.isLoggedIn) {
         Box(
@@ -370,16 +383,10 @@ private fun LoginMethodToggle(
     selected: LoginMethod,
     onSelected: (LoginMethod) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = AccountVisualStyle.accentSoftColor
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(5.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             LoginMethodOption(
                 modifier = Modifier.weight(1f),
@@ -394,6 +401,12 @@ private fun LoginMethodToggle(
                 onClick = { onSelected(LoginMethod.EMAIL) }
             )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+        )
     }
 }
 
@@ -409,24 +422,50 @@ private fun LoginMethodOption(
             if (label == "手机号") "login_method_phone_tab" else "login_method_email_tab"
         ),
         onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        color = if (selected) AccountVisualStyle.accentColor else Color.Transparent,
-        tonalElevation = if (selected) 2.dp else 0.dp,
-        shadowElevation = if (selected) 4.dp else 0.dp
+        shape = RoundedCornerShape(0.dp),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
-        Box(
-            modifier = Modifier.padding(vertical = 13.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) {
-                    Color.White
-                } else {
-                    AccountVisualStyle.accentTextColor
-                },
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (selected) {
+                        AccountVisualStyle.accentColor
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(48.dp)
+                    .height(2.dp)
+                    .testTag(
+                        if (label == "手机号") {
+                            "login_method_phone_indicator"
+                        } else {
+                            "login_method_email_indicator"
+                        }
+                    )
+                    .background(
+                        if (selected) {
+                            AccountVisualStyle.accentColor
+                        } else {
+                            Color.Transparent
+                        }
+                    )
             )
         }
     }
@@ -438,6 +477,7 @@ private fun LoginInputField(
     onValueChange: (String) -> Unit,
     label: String,
     leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
     enabled: Boolean,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None
@@ -448,19 +488,20 @@ private fun LoginInputField(
         modifier = Modifier.fillMaxWidth(),
         label = { Text(label) },
         leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
         enabled = enabled,
         singleLine = true,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = AccountVisualStyle.accentColor,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.36f),
             focusedLabelColor = AccountVisualStyle.accentColor,
             focusedLeadingIconColor = AccountVisualStyle.accentColor,
             unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
         )
     )
 }

@@ -7,19 +7,37 @@ import org.junit.Test
 
 class HomeChromeLayoutSpecTest {
     @Test
-    fun miniPlayer_shouldUseSofterButSmallerCornerThanBottomBar() {
-        assertEquals(24.dp, HomeChromeLayoutSpec.bottomBarCornerRadius)
+    fun miniPlayerAndBottomBar_shouldUseMatchingCornerRhythm() {
+        assertEquals(14.dp, HomeChromeLayoutSpec.bottomBarCornerRadius)
         assertEquals(14.dp, HomeChromeLayoutSpec.miniPlayerCornerRadius)
-        assertTrue(
-            "Expected minibar radius to be smaller than bottom tab radius",
-            HomeChromeLayoutSpec.miniPlayerCornerRadius <
-                HomeChromeLayoutSpec.bottomBarCornerRadius
+        assertEquals(
+            HomeChromeLayoutSpec.miniPlayerCornerRadius,
+            HomeChromeLayoutSpec.bottomBarCornerRadius
         )
     }
 
     @Test
-    fun bottomBar_shouldUseSlimmerHeight() {
-        assertEquals(72.dp, HomeChromeLayoutSpec.bottomBarMinHeight)
+    fun bottomBar_shouldMatchMiniPlayerHeight() {
+        assertEquals(60.dp, HomeChromeLayoutSpec.bottomBarMinHeight)
+        assertEquals(
+            HomeChromeLayoutSpec.miniPlayerMinHeight,
+            HomeChromeLayoutSpec.bottomBarMinHeight
+        )
+    }
+
+    @Test
+    fun bottomBar_shouldRemainACompactFloatingBar() {
+        assertEquals(0.76f, HomeChromeLayoutSpec.bottomBarWidthFraction)
+        assertEquals(296.dp, HomeChromeLayoutSpec.bottomBarMaxWidth)
+        assertEquals(26.dp, HomeChromeLayoutSpec.bottomBarOuterHorizontalPadding)
+    }
+
+    @Test
+    fun bottomBar_shouldUseTheSameFloatingShadowAsMiniPlayer() {
+        assertEquals(
+            HomeChromeLayoutSpec.miniPlayerShadowElevation,
+            HomeChromeLayoutSpec.bottomBarShadowElevation
+        )
     }
 
     @Test

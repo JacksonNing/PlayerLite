@@ -90,7 +90,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -115,7 +114,7 @@ import com.wxy.playerlite.feature.user.model.UserSessionUiState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-private val UserCenterCompactHorizontalPadding = 12.dp
+private val UserCenterCompactHorizontalPadding = 20.dp
 
 @Composable
 internal fun MainBottomBar(
@@ -155,7 +154,7 @@ internal fun MainBottomBar(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -206,15 +205,15 @@ private fun HomeBottomBarItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, top = 4.dp, end = 8.dp, bottom = 5.dp),
+                .padding(start = 8.dp, top = 2.dp, end = 8.dp, bottom = 3.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (selected) accentColor else unselectedContentColor,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(21.dp)
             )
             Text(
                 text = label,
@@ -441,7 +440,7 @@ internal fun UserCenterScreen(
                 UserCenterProfileHeader(
                     userState = userState,
                     onOpenSettings = onOpenSettings,
-                    modifier = Modifier.padding(bottom = 14.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
 
@@ -451,7 +450,7 @@ internal fun UserCenterScreen(
                     onOpenRecent = onOpenRecentSongs,
                     onOpenLocal = onOpenLocalSongs,
                     onOpenImport = onOpenPlaylistImport,
-                    modifier = Modifier.padding(bottom = if (userState.isLoggedIn) 18.dp else 14.dp)
+                    modifier = Modifier.padding(bottom = if (userState.isLoggedIn) 22.dp else 16.dp)
                 )
             }
 
@@ -475,17 +474,10 @@ private fun UserCenterPageBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val background = MaterialTheme.colorScheme.background
-    val surface = MaterialTheme.colorScheme.surface
-    val brush = remember(background, surface) {
-        Brush.verticalGradient(
-            colors = listOf(background, surface)
-        )
-    }
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(brush)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         content()
     }
@@ -499,38 +491,76 @@ private fun UserCenterQuickEntryRow(
     onOpenImport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .testTag("user_center_quick_entries"),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        UserCenterQuickEntry(
-            icon = Icons.Rounded.Favorite,
-            label = "喜欢",
-            onClick = onOpenLiked,
-            modifier = Modifier.testTag("user_center_quick_entry_liked")
-        )
-        UserCenterQuickEntry(
-            icon = Icons.Rounded.History,
-            label = "最近",
-            onClick = onOpenRecent,
-            modifier = Modifier.testTag("user_center_quick_entry_recent")
-        )
-        UserCenterQuickEntry(
-            icon = Icons.Rounded.DownloadForOffline,
-            label = "本地",
-            onClick = onOpenLocal,
-            modifier = Modifier.testTag("user_center_quick_entry_local")
-        )
-        UserCenterQuickEntry(
-            icon = Icons.Rounded.FileDownload,
-            label = "导入",
-            onClick = onOpenImport,
-            modifier = Modifier.testTag("user_center_quick_entry_import")
-        )
+        UserCenterDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(78.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.Favorite,
+                label = "喜欢",
+                onClick = onOpenLiked,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_liked")
+            )
+            UserCenterVerticalDivider()
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.History,
+                label = "最近",
+                onClick = onOpenRecent,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_recent")
+            )
+            UserCenterVerticalDivider()
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.DownloadForOffline,
+                label = "本地",
+                onClick = onOpenLocal,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_local")
+            )
+            UserCenterVerticalDivider()
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.FileDownload,
+                label = "导入",
+                onClick = onOpenImport,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_import")
+            )
+        }
+        UserCenterDivider()
     }
+}
+
+@Composable
+private fun UserCenterDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+    )
+}
+
+@Composable
+private fun UserCenterVerticalDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(42.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+    )
 }
 
 @Composable
@@ -542,32 +572,23 @@ private fun UserCenterQuickEntry(
 ) {
     Column(
         modifier = modifier
-            .width(72.dp)
+            .fillMaxHeight()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.Center
     ) {
-        Surface(
-            modifier = Modifier.size(48.dp),
-            shape = RoundedCornerShape(18.dp),
-            color = AccountVisualStyle.accentColor.copy(alpha = 0.12f),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = AccountVisualStyle.accentColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = AccountVisualStyle.accentColor,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(7.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -659,10 +680,6 @@ private fun LazyListScope.userCenterLoggedInItems(
         ) { index, item ->
             UserCenterCollectionCard(
                 item = item,
-                shape = userCenterContentItemShape(
-                    index = index,
-                    total = currentState.items.size
-                ),
                 showTopDivider = index > 0,
                 onClick = { onContentClick(item.action) },
                 modifier = Modifier.fillMaxWidth()
@@ -719,31 +736,6 @@ private fun LazyListScope.userCenterLoggedOutItems(
     }
 }
 
-private fun userCenterContentItemShape(
-    index: Int,
-    total: Int
-): RoundedCornerShape {
-    return when {
-        total <= 0 -> RoundedCornerShape(AccountVisualStyle.cardCorner)
-        index == 0 && total == 1 -> RoundedCornerShape(AccountVisualStyle.cardCorner)
-        index == 0 -> RoundedCornerShape(
-            topStart = AccountVisualStyle.cardCorner,
-            topEnd = AccountVisualStyle.cardCorner,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        )
-
-        index == total - 1 -> RoundedCornerShape(
-            topStart = 0.dp,
-            topEnd = 0.dp,
-            bottomStart = AccountVisualStyle.cardCorner,
-            bottomEnd = AccountVisualStyle.cardCorner
-        )
-
-        else -> RoundedCornerShape(0.dp)
-    }
-}
-
 @Composable
 private fun UserCenterPanelSurface(
     modifier: Modifier = Modifier,
@@ -753,9 +745,13 @@ private fun UserCenterPanelSurface(
     Surface(
         modifier = modifier,
         shape = shape,
-        color = Color.White.copy(alpha = 0.94f),
-        tonalElevation = 2.dp,
-        shadowElevation = 8.dp
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
+        )
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
@@ -798,7 +794,6 @@ private fun UserCenterStatusPanel(
 @Composable
 private fun UserCenterCollectionCard(
     item: UserCenterCollectionItemUiModel,
-    shape: RoundedCornerShape,
     showTopDivider: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -806,8 +801,8 @@ private fun UserCenterCollectionCard(
     Surface(
         modifier = modifier
             .fillMaxWidth(),
-        shape = shape,
-        color = Color.White.copy(alpha = 0.94f),
+        shape = RoundedCornerShape(0.dp),
+        color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {
@@ -822,20 +817,20 @@ private fun UserCenterCollectionCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                 )
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.size(64.dp),
-                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.size(58.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = AccountVisualStyle.accentSoftColor
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -884,17 +879,11 @@ private fun UserCenterCollectionCard(
                 }
 
                 item.badge?.let { badge ->
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = AccountVisualStyle.accentSoftColor
-                    ) {
-                        Text(
-                            text = badge,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AccountVisualStyle.accentTextColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
+                    Text(
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AccountVisualStyle.accentTextColor
+                    )
                 }
 
                 Icon(
@@ -914,130 +903,89 @@ private fun UserCenterProfileHeader(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val headerShape = RoundedCornerShape(28.dp)
-    Surface(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .testTag("user_center_profile_header"),
-        shape = headerShape,
-        color = Color.White.copy(alpha = 0.96f),
-        tonalElevation = 0.dp,
-        shadowElevation = 10.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.06f)
-        )
+            .testTag("user_center_profile_header")
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 20.dp)
+                .size(72.dp)
+                .testTag("user_center_avatar"),
+            contentAlignment = Alignment.Center
         ) {
-            IconButton(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .testTag("user_center_settings_entry"),
-                onClick = onOpenSettings
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Settings,
-                    contentDescription = "设置",
-                    tint = AccountVisualStyle.accentColor
-                )
-            }
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val levelBadge = remember(userState.summary) {
-                    resolveUserLevelBadge(userState.summary)
-                }
-                Box(
+            if (!userState.avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = userState.avatarUrl,
+                    contentDescription = "用户头像",
                     modifier = Modifier
-                        .size(96.dp)
-                        .testTag("user_center_avatar")
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
+                            shape = CircleShape
+                        ),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = AccountVisualStyle.accentSoftColor,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        if (!userState.avatarUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = userState.avatarUrl,
-                                contentDescription = "用户头像",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .border(
-                                        width = 4.dp,
-                                        color = Color.White.copy(alpha = 0.94f),
-                                        shape = CircleShape
-                                    ),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                shape = CircleShape,
-                                color = AccountVisualStyle.accentSoftColor,
-                                tonalElevation = 0.dp,
-                                shadowElevation = 0.dp
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AccountCircle,
-                                        contentDescription = null,
-                                        tint = AccountVisualStyle.accentColor,
-                                        modifier = Modifier.size(72.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    levelBadge?.let { badge ->
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(2.dp),
-                            color = AccountVisualStyle.accentColor,
-                            shape = RoundedCornerShape(999.dp),
-                            tonalElevation = 0.dp,
-                            shadowElevation = 2.dp
-                        ) {
-                            Text(
-                                text = badge,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Rounded.AccountCircle,
+                            contentDescription = null,
+                            tint = AccountVisualStyle.accentColor,
+                            modifier = Modifier.size(50.dp)
+                        )
                     }
                 }
-
-                Text(
-                    text = userState.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("user_center_title")
-                )
-
-                Text(
-                    text = userState.summary,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("user_center_summary")
-                )
             }
         }
-    }
-}
 
-private fun resolveUserLevelBadge(summary: String): String? {
-    val match = Regex("""Lv\.?\s*(\d+)""").find(summary) ?: return null
-    return "Lv${match.groupValues.getOrNull(1).orEmpty()}".takeIf { it.length > 2 }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                text = userState.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("user_center_title")
+            )
+
+            Text(
+                text = userState.summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("user_center_summary")
+            )
+        }
+
+        IconButton(
+            modifier = Modifier.testTag("user_center_settings_entry"),
+            onClick = onOpenSettings
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Settings,
+                contentDescription = "设置",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable

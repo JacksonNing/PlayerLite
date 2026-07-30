@@ -3,9 +3,9 @@ package com.wxy.playerlite.feature.main
 import androidx.compose.ui.unit.dp
 
 internal object HomeChromeLayoutSpec {
-    val bottomBarCornerRadius = 24.dp
-    val bottomBarItemCornerRadius = 18.dp
-    val bottomBarMinHeight = 72.dp
+    val bottomBarCornerRadius = 14.dp
+    val bottomBarItemCornerRadius = 10.dp
+    val bottomBarMinHeight = 60.dp
     val bottomBarShadowElevation = 6.dp
     val bottomBarOuterVerticalPadding = 4.dp
     val bottomBarOuterHorizontalPadding = 26.dp
@@ -13,7 +13,7 @@ internal object HomeChromeLayoutSpec {
     const val bottomBarWidthFraction = 0.76f
     val bottomBarMaxWidth = 296.dp
     val bottomBarOverlayHeight =
-        bottomBarMinHeight + bottomBarOuterVerticalPadding * 2 + bottomBarBottomClearance
+        bottomBarMinHeight + bottomBarOuterVerticalPadding + bottomBarBottomClearance
 
     val miniPlayerCornerRadius = 14.dp
     val miniPlayerBodyCornerRadius = 10.dp
@@ -32,6 +32,7 @@ internal object HomeChromeLayoutSpec {
     val miniPlayerProgressTrackVerticalPadding = 0.dp
     const val miniPlayerProgressTrackAlpha = 0.1f
     val homeMiniPlayerBottomSpacing = bottomBarOverlayHeight + 4.dp
-    val homeOverviewScrollBottomPadding = homeMiniPlayerBottomSpacing + 66.dp
-    val userCenterScrollBottomPadding = bottomBarOverlayHeight + 28.dp
+    val homeOverviewScrollBottomPadding =
+        homeMiniPlayerBottomSpacing + miniPlayerMinHeight + 16.dp
+    val userCenterScrollBottomPadding = bottomBarOverlayHeight + 20.dp
 }
