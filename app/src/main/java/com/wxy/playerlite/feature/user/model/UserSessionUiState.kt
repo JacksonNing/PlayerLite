@@ -6,7 +6,7 @@ internal data class UserSessionUiState(
     val isLoggedIn: Boolean = false,
     val isBusy: Boolean = false,
     val title: String = "未登录",
-    val summary: String = "本地播放不受影响，在线播放前需要登录",
+    val summary: String = "本地可用，登录后开启在线播放",
     val avatarUrl: String? = null
 )
 
@@ -16,7 +16,7 @@ internal fun LoginState.toUserSessionUiState(isBusy: Boolean): UserSessionUiStat
             isLoggedIn = false,
             isBusy = isBusy,
             title = "未登录",
-            summary = "本地播放不受影响，在线播放前需要登录",
+            summary = "本地可用，登录后开启在线播放",
             avatarUrl = null
         )
 

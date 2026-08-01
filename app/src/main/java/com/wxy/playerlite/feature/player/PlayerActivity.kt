@@ -7,9 +7,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +32,7 @@ import com.wxy.playerlite.feature.song.createSongDetailIntent
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 
 class PlayerActivity : ComponentActivity() {
-    private val viewModel: PlayerViewModel by viewModels()
+    private val viewModel: PlayerViewModel by sharedPlayerViewModels()
     private var pendingOpenPlayerLaunchRequests by mutableStateOf(0)
     private var pendingStartPlaybackLaunchRequests by mutableStateOf(0)
     private var pendingOpenPlaylistLaunchRequests by mutableStateOf(0)
@@ -47,6 +47,9 @@ class PlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enqueueLaunchRequest(intent)
         enableEdgeToEdge()
+        onBackPressedDispatcher.addCallback(this) {
+            closePlayer()
+        }
         setContent {
             val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
             val resolvedCurrentArtistId = resolveCurrentPlayerArtistId(state)
@@ -136,7 +139,7 @@ class PlayerActivity : ComponentActivity() {
                     onSelectPlaybackSpeed = viewModel::updatePlaybackSpeed,
                     onSelectAudioQuality = viewModel::updatePreferredAudioQuality,
                     onSelectAudioEffectPreset = viewModel::updateAudioEffectPreset,
-                    onBackClick = ::finish,
+                    onBackClick = ::closePlayer,
                     onOpenSongDetail = {
                         resolveCurrentSongRef(state)?.let { ref ->
                             startActivity(
@@ -205,6 +208,13 @@ class PlayerActivity : ComponentActivity() {
         super.onStop()
     }
 
+    private fun closePlayer() {
+        closePlayerActivity(
+            dismissPlaylistSheet = viewModel::onDismissPlaylistSheet,
+            finishActivity = ::finish
+        )
+    }
+
     private fun enqueueLaunchRequest(intent: Intent?) {
         if (PlayerEntry.shouldOpenPlayerFromIntent(intent)) {
             pendingOpenPlayerLaunchRequests += 1
@@ -269,6 +279,14 @@ class PlayerActivity : ComponentActivity() {
         ).createAlbumDetailIntent(this)?.let(::startActivity)
             ?: Toast.makeText(this, "当前专辑暂时无法打开", Toast.LENGTH_SHORT).show()
     }
+}
+
+internal fun closePlayerActivity(
+    dismissPlaylistSheet: () -> Unit,
+    finishActivity: () -> Unit
+) {
+    dismissPlaylistSheet()
+    finishActivity()
 }
 
 internal fun resolvePlayerRequestedOrientation(

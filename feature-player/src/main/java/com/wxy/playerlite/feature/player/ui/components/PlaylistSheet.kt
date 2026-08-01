@@ -444,56 +444,67 @@ fun PlaylistBottomSheet(
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Box(
-                                                modifier = Modifier.size(width = 28.dp, height = 44.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                when {
-                                                    reorderModeEnabled -> {
-                                                        PlaylistSheetDragHandle(
-                                                            tint = itemVisuals.dragHandleTint,
-                                                            enabled = canReorder,
-                                                            modifier = Modifier
-                                                                .testTag("playlist_sheet_drag_handle_${item.id}")
-                                                        )
-                                                    }
-
-                                                    isActive -> {
-                                                        Icon(
-                                                            imageVector = Icons.Rounded.GraphicEq,
-                                                            contentDescription = "当前播放",
-                                                            tint = itemVisuals.titleColor,
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .testTag("playlist_sheet_active_indicator_${item.id}")
-                                                        )
-                                                    }
+                                            if (reorderModeEnabled) {
+                                                Box(
+                                                    modifier = Modifier.size(width = 28.dp, height = 44.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    PlaylistSheetDragHandle(
+                                                        tint = itemVisuals.dragHandleTint,
+                                                        enabled = canReorder,
+                                                        modifier = Modifier
+                                                            .testTag("playlist_sheet_drag_handle_${item.id}")
+                                                    )
                                                 }
                                             }
-                                            Surface(
+                                            Box(
                                                 modifier = Modifier
                                                     .size(44.dp)
-                                                    .testTag("playlist_sheet_artwork_${item.id}"),
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = itemVisuals.artworkFallbackContainerColor
+                                                    .testTag("playlist_sheet_artwork_${item.id}")
                                             ) {
-                                                if (!item.coverUrl.isNullOrBlank()) {
-                                                    AsyncImage(
-                                                        model = item.coverUrl,
-                                                        contentDescription = null,
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier.fillMaxSize()
-                                                    )
-                                                } else {
-                                                    Box(
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Rounded.LibraryMusic,
+                                                Surface(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    color = itemVisuals.artworkFallbackContainerColor
+                                                ) {
+                                                    if (!item.coverUrl.isNullOrBlank()) {
+                                                        AsyncImage(
+                                                            model = item.coverUrl,
                                                             contentDescription = null,
-                                                            tint = MaterialTheme.colorScheme.primary
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier.fillMaxSize()
                                                         )
+                                                    } else {
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Rounded.LibraryMusic,
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.primary
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                if (isActive) {
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .align(Alignment.BottomEnd)
+                                                            .padding(2.dp)
+                                                            .size(18.dp)
+                                                            .testTag("playlist_sheet_active_indicator_${item.id}"),
+                                                        shape = CircleShape,
+                                                        color = itemVisuals.titleColor.copy(alpha = 0.92f)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            Icon(
+                                                                imageVector = Icons.Rounded.GraphicEq,
+                                                                contentDescription = "当前播放",
+                                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                                modifier = Modifier.size(13.dp)
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }

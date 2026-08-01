@@ -43,6 +43,7 @@ import com.wxy.playerlite.feature.main.toContentEntryAction
 import com.wxy.playerlite.feature.player.PlayerActivity
 import com.wxy.playerlite.feature.player.PlayerEntry
 import com.wxy.playerlite.feature.player.PlayerViewModel
+import com.wxy.playerlite.feature.player.sharedPlayerViewModels
 import com.wxy.playerlite.feature.player.model.AUDIO_TRACK_PLAYSTATE_PAUSED
 import com.wxy.playerlite.feature.player.model.AUDIO_TRACK_PLAYSTATE_PLAYING
 import com.wxy.playerlite.feature.player.runtime.DetailPlaybackRequest
@@ -56,7 +57,7 @@ import com.wxy.playerlite.feature.webplaylistimport.WebPlaylistImportActivity
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: PlayerViewModel by viewModels()
+    private val viewModel: PlayerViewModel by sharedPlayerViewModels()
     private val homeViewModel: HomeViewModel by viewModels()
     private val userCenterViewModel: UserCenterViewModel by viewModels()
     private var shellState by mutableStateOf(MainShellState())
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
             startActivity(
                 PlayerActivity.createIntent(
                     context = this,
+                    openPlaylist = true,
                     startPlayback = true
                 )
             )
@@ -175,6 +177,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     onRetry = homeViewModel::refresh,
+                                    onRefresh = homeViewModel::refresh,
                                     onAction = ::handleHomeAction,
                                     modifier = Modifier.padding(top = topInset)
                                 )

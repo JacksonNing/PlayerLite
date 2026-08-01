@@ -1,4 +1,10 @@
-# PlayerLite
+<p align="center">
+  <img src="docs/assets/playerlite-icon.png" width="128" alt="PlayerLite 应用图标" />
+</p>
+
+<h1 align="center">PlayerLite</h1>
+
+<p align="center">轻量、完整的 Android 音频播放器</p>
 
 PlayerLite 是一个 Android 音频播放器，使用 Jetpack Compose、Media3、FFmpeg、JNI 和 native cache core。播放服务运行在独立的 `:playback` 进程，应用侧通过 `MediaController` 与服务通信。
 

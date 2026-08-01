@@ -66,17 +66,10 @@ class PlayerServiceBridge(
     }
 
     fun ensurePlaybackServiceStartedForPlayback() {
-        val componentName = resolvePlaybackServiceComponent() ?: run {
-            onControllerError("Playback service component resolve failed")
-            return
-        }
-        val intent = Intent(PlaybackServiceContract.ACTION_PLAYBACK_MEDIA_SESSION_SERVICE)
-            .setComponent(componentName)
-        runCatching {
-            ContextCompat.startForegroundService(appContext, intent)
-        }.onFailure {
-            onControllerError("Playback service start failed: ${it.message ?: "unknown"}")
-        }
+        // MediaController binds the MediaSessionService. Media3 promotes the service only
+        // after playback starts and a media notification is available. Starting it as a
+        // foreground service here creates a strict promotion deadline before that state exists.
+        connectIfNeeded()
     }
 
     fun connectIfNeeded() {

@@ -6,9 +6,8 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionCommands
@@ -39,11 +38,18 @@ class PlayerMediaSessionService : MediaSessionService() {
     private lateinit var playbackRuntime: PlaybackProcessRuntime
     private var mediaSession: MediaSession? = null
     private var notificationJob: Job? = null
-    private var runningInForeground = false
-    private var foregroundPromotionPending = false
 
     override fun onCreate() {
         super.onCreate()
+
+        ensureNotificationChannel()
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setNotificationId(NOTIFICATION_ID)
+                .setChannelId(CHANNEL_ID)
+                .build()
+                .apply { setSmallIcon(resolveNotificationSmallIcon()) }
+        )
 
         playbackRuntime = PlaybackProcessRuntime(
             appContext = applicationContext,
@@ -59,18 +65,11 @@ class PlayerMediaSessionService : MediaSessionService() {
         buildContentIntent()?.let { sessionBuilder.setSessionActivity(it) }
         mediaSession = sessionBuilder.build()
 
-        ensureNotificationChannel()
         notificationJob = serviceScope.launch {
             playbackRuntime.state.collect { state ->
                 publishSessionExtras(state)
-                updateForegroundNotification(state)
             }
         }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        foregroundPromotionPending = true
-        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -85,40 +84,8 @@ class PlayerMediaSessionService : MediaSessionService() {
         mediaSession = null
         playbackRuntime.release()
 
-        if (runningInForeground) {
-            stopForegroundCompat()
-            runningInForeground = false
-        }
-
         serviceScope.cancel()
         super.onDestroy()
-    }
-
-    private fun updateForegroundNotification(state: PlaybackProcessState) {
-        val shouldForeground = state.playbackState == PLAYBACK_STATE_PLAYING
-        val hasPlayableContext = state.currentTrack != null
-        val notification = buildNotification(state, isPlaying = shouldForeground)
-        val controller = ForegroundNotificationController(
-            startForeground = { startForeground(NOTIFICATION_ID, notification) },
-            stopForeground = { stopForegroundCompat() },
-            notify = { notificationManager().notify(NOTIFICATION_ID, notification) },
-            cancel = { notificationManager().cancel(NOTIFICATION_ID) },
-            onForegroundStartRejected = { message ->
-                Log.w(TAG, "Foreground promotion rejected: $message")
-            }
-        )
-        val result = controller.update(
-            runningInForeground = runningInForeground,
-            shouldForeground = shouldForeground,
-            hasPlayableContext = hasPlayableContext,
-            allowForegroundPromotion = foregroundPromotionPending || runningInForeground
-        )
-        runningInForeground = result.runningInForeground
-        if (result.foregroundPromotionRejected || !shouldForeground || !hasPlayableContext) {
-            foregroundPromotionPending = false
-        } else if (runningInForeground) {
-            foregroundPromotionPending = false
-        }
     }
 
     private fun publishSessionExtras(state: PlaybackProcessState) {
@@ -126,17 +93,6 @@ class PlayerMediaSessionService : MediaSessionService() {
         val extras = buildSessionExtras(state)
         session.setSessionExtras(extras)
     }
-
-    private fun buildNotification(state: PlaybackProcessState, isPlaying: Boolean) =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(resolveNotificationSmallIcon())
-            .setContentTitle(resolveNotificationTitle(state, packageName))
-            .setContentText(resolveNotificationSubtitle(state))
-            .setOngoing(isPlaying)
-            .setOnlyAlertOnce(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(buildContentIntent())
-            .build()
 
     private fun buildContentIntent(): PendingIntent? {
         val launchIntent = PlaybackLaunchRequest.createPlayerActivityIntent(context = this)
@@ -164,15 +120,6 @@ class PlayerMediaSessionService : MediaSessionService() {
 
     private fun notificationManager(): NotificationManager {
         return getSystemService(NotificationManager::class.java)
-    }
-
-    private fun stopForegroundCompat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_DETACH)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(false)
-        }
     }
 
     private companion object {

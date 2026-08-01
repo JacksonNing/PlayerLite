@@ -25,31 +25,20 @@ set(FFMPEG_INCLUDE_DIR "${FFMPEG_SUBMODULE_ROOT}/out/${ANDROID_ABI}/include")
 set(FFMPEG_LIB_FILE "${FFMPEG_SUBMODULE_ROOT}/out-jniLibs/${ANDROID_ABI}/libffmpeg.so")
 set(FFMPEG_AVFILTER_HEADER "${FFMPEG_INCLUDE_DIR}/libavfilter/avfilter.h")
 
-set(FFMPEG_READY TRUE)
-
-if(NOT EXISTS "${FFMPEG_INCLUDE_DIR}/libavformat/avformat.h")
-    set(FFMPEG_READY FALSE)
-endif()
-
-if(NOT EXISTS "${FFMPEG_LIB_FILE}")
-    set(FFMPEG_READY FALSE)
-endif()
-
-if(NOT EXISTS "${FFMPEG_AVFILTER_HEADER}")
-    set(FFMPEG_READY FALSE)
-endif()
-
-if(FFMPEG_READY)
-    target_compile_definitions(player PRIVATE HAVE_FFMPEG=1)
-    target_include_directories(player PRIVATE "${FFMPEG_INCLUDE_DIR}")
-
-    add_library(ffmpeg SHARED IMPORTED)
-    set_target_properties(ffmpeg PROPERTIES
-        IMPORTED_LOCATION "${FFMPEG_LIB_FILE}"
-    )
-    target_link_libraries(player PRIVATE ffmpeg)
-else()
-    message(WARNING "FFmpeg headers/libs not found. player.so will be built with a stub decoder.\n"
+if(NOT EXISTS "${FFMPEG_INCLUDE_DIR}/libavformat/avformat.h"
+        OR NOT EXISTS "${FFMPEG_AVFILTER_HEADER}"
+        OR NOT EXISTS "${FFMPEG_LIB_FILE}")
+    message(FATAL_ERROR "FFmpeg headers/libs not found; refusing to build a non-playable APK.\n"
         "Expected headers: ${FFMPEG_INCLUDE_DIR}\n"
-        "Expected lib: ${FFMPEG_LIB_FILE}")
+        "Expected lib: ${FFMPEG_LIB_FILE}\n"
+        "Run scripts/build_ffmpeg_android.sh before building the app.")
 endif()
+
+target_compile_definitions(player PRIVATE HAVE_FFMPEG=1)
+target_include_directories(player PRIVATE "${FFMPEG_INCLUDE_DIR}")
+
+add_library(ffmpeg SHARED IMPORTED)
+set_target_properties(ffmpeg PROPERTIES
+    IMPORTED_LOCATION "${FFMPEG_LIB_FILE}"
+)
+target_link_libraries(player PRIVATE ffmpeg)

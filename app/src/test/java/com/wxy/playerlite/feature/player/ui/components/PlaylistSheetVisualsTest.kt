@@ -228,6 +228,49 @@ class PlaylistSheetVisualsTest {
     }
 
     @Test
+    fun playlistBottomSheet_activeIndicator_shouldOverlayArtworkBottomEnd() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                Box(modifier = Modifier.size(width = 360.dp, height = 760.dp)) {
+                    PlaylistBottomSheet(
+                        visible = true,
+                        items = buildPlaylistItems(prefix = "overlay").take(2),
+                        activeIndex = 0,
+                        playbackMode = PlaybackMode.LIST_LOOP,
+                        showOriginalOrderInShuffle = false,
+                        canReorder = true,
+                        onDismiss = {},
+                        onShowOriginalOrderInShuffleChange = {},
+                        onSelect = {},
+                        onRemove = {},
+                        onMove = { _, _ -> }
+                    )
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        val artworkBounds = composeRule
+            .onNodeWithTag("playlist_sheet_artwork_overlay-0", useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val indicatorBounds = composeRule
+            .onNodeWithTag("playlist_sheet_active_indicator_overlay-0", useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertTrue(indicatorBounds.left >= artworkBounds.left)
+        assertTrue(indicatorBounds.top >= artworkBounds.top)
+        assertTrue(indicatorBounds.right <= artworkBounds.right)
+        assertTrue(indicatorBounds.bottom <= artworkBounds.bottom)
+        assertTrue(indicatorBounds.center.x > artworkBounds.center.x)
+        assertTrue(indicatorBounds.center.y > artworkBounds.center.y)
+        composeRule
+            .onAllNodesWithTag("playlist_sheet_active_indicator_overlay-1", useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun playlistBottomSheet_shouldFollowActiveItemIdentityChangeWhileVisible() {
         var items by mutableStateOf(buildPlaylistItems(prefix = "before"))
 
@@ -400,7 +443,7 @@ class PlaylistSheetVisualsTest {
             .assertCountEquals(1)
         composeRule
             .onAllNodesWithTag("playlist_sheet_active_indicator_sort-1", useUnmergedTree = true)
-            .assertCountEquals(0)
+            .assertCountEquals(1)
         composeRule.onNodeWithTag("playlist_sheet_more_sort-1").assertIsDisplayed()
     }
 

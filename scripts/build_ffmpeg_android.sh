@@ -64,6 +64,10 @@ if [ -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-arm64" ]; then
   HOST_TAG=darwin-arm64
 elif [ -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64" ]; then
   HOST_TAG=darwin-x86_64
+elif [ -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64" ]; then
+  HOST_TAG=linux-x86_64
+elif [ -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-aarch64" ]; then
+  HOST_TAG=linux-aarch64
 else
   printf "ERROR: unsupported NDK host tag under %s/toolchains/llvm/prebuilt\n" "$ANDROID_NDK_HOME" >&2
   exit 1

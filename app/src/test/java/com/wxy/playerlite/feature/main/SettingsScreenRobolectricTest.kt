@@ -67,6 +67,14 @@ class SettingsScreenRobolectricTest {
         )
         composeRule.onNodeWithTag("settings_playback_preferences_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
+            matcher = hasTestTag("settings_cache_policy_section")
+        )
+        composeRule.onNodeWithTag("settings_cache_policy_section").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_cache_limit_trigger")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+        composeRule.onAllNodesWithTag("settings_cache_limit_editor").assertCountEquals(0)
+        composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
             matcher = hasTestTag("settings_cache_failure_notice_switch")
         )
         composeRule.onAllNodesWithTag("settings_cache_failure_notice_switch")
@@ -77,9 +85,12 @@ class SettingsScreenRobolectricTest {
         composeRule.onAllNodesWithTag("settings_playback_prewarm_switch")
             .assertCountEquals(1)
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
-            matcher = hasTestTag("settings_playback_prewarm_budget_summary")
+            matcher = hasTestTag("settings_playback_prewarm_budget_trigger")
         )
-        composeRule.onNodeWithTag("settings_playback_prewarm_budget_summary")
+        composeRule.onNodeWithTag(
+            testTag = "settings_playback_prewarm_budget_summary",
+            useUnmergedTree = true
+        )
             .assertTextContains("60 秒 / 8 MB")
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
             matcher = hasTestTag("settings_cache_cleanup_policy")
@@ -285,6 +296,10 @@ class SettingsScreenRobolectricTest {
         composeRule.runOnIdle {
             isPreferredAudioQualityDialogVisible = false
         }
+        composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
+            matcher = hasTestTag("settings_cache_limit_trigger")
+        )
+        composeRule.onNodeWithTag("settings_cache_limit_trigger").performClick()
         composeRule.onNodeWithTag("settings_playback_cache_limit_save")
             .assertHasClickAction()
             .performClick()
@@ -315,19 +330,26 @@ class SettingsScreenRobolectricTest {
         )
             .assertHasClickAction()
             .performClick()
+        composeRule.onNodeWithTag("settings_playback_prewarm_budget_trigger")
+            .performScrollTo()
+            .assertHasClickAction()
+            .performClick()
         composeRule.onNodeWithTag(
             testTag = "settings_playback_prewarm_budget_light",
             useUnmergedTree = true
         )
-            .performScrollTo()
             .assertHasClickAction()
             .performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
             matcher = hasTestTag("settings_audio_sources_section")
         )
-        composeRule.onNodeWithTag("settings_audio_source_import_url_submit")
+        composeRule.onNodeWithTag("settings_audio_source_import_url_trigger")
             .performScrollTo()
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .performClick()
+        composeRule.onNodeWithTag("settings_audio_source_import_url_submit")
             .assertIsDisplayed()
             .assertHasClickAction()
             .performClick()

@@ -2252,12 +2252,12 @@ private fun PlayerLandscapeSongPage(
                 end = layoutMetrics.horizontalPadding
             )
             .navigationBarsPadding(),
-        horizontalArrangement = Arrangement.spacedBy(layoutMetrics.sectionSpacing * 1.1f),
+        horizontalArrangement = Arrangement.spacedBy(layoutMetrics.sectionSpacing * 1.2f),
         verticalAlignment = Alignment.CenterVertically
     ) {
         BoxWithConstraints(
             modifier = Modifier
-                .weight(1f)
+                .weight(1.1f)
                 .fillMaxHeight()
                 .testTag("player_screen_landscape_controls_panel")
         ) {
@@ -2269,9 +2269,9 @@ private fun PlayerLandscapeSongPage(
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .fillMaxWidth(0.78f)
+                        .fillMaxWidth(0.90f)
                         .padding(
-                            top = layoutMetrics.topBarHeight + (layoutMetrics.sectionSpacing * 2.45f),
+                            top = layoutMetrics.topBarHeight + (layoutMetrics.sectionSpacing * 2.15f),
                             bottom = layoutMetrics.sectionSpacing * 0.2f
                         )
                         .testTag("player_screen_landscape_info_group")
@@ -2297,9 +2297,10 @@ private fun PlayerLandscapeSongPage(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .fillMaxWidth(0.89f)
+                        .fillMaxWidth(0.92f)
+                        .padding(bottom = layoutMetrics.bottomControlsSafeGap * 0.56f)
                         .testTag("player_screen_landscape_bottom_group"),
-                    verticalArrangement = Arrangement.spacedBy(layoutMetrics.sectionSpacing * 0.18f)
+                    verticalArrangement = Arrangement.spacedBy(layoutMetrics.sectionSpacing * 0.24f)
                 ) {
                     Column(
                         modifier = Modifier
@@ -2374,7 +2375,7 @@ private fun PlayerLandscapeSongPage(
 
         Box(
             modifier = Modifier
-                .weight(0.88f)
+                .weight(0.9f)
                 .fillMaxHeight()
                 .testTag("player_screen_landscape_visual_panel"),
             contentAlignment = Alignment.Center
@@ -2384,13 +2385,13 @@ private fun PlayerLandscapeSongPage(
                     .fillMaxSize()
                     .testTag("player_screen_song_page")
             ) {
-                val visualHostSize = if (maxWidth < maxHeight) {
-                    maxWidth * 0.90f
-                } else {
-                    maxHeight * 0.90f
-                }
-                val coverFrameSize = visualHostSize * 0.94f
-                val reflectionHeight = (coverFrameSize * 0.22f).coerceIn(24.dp, 72.dp)
+                // Leave a clear safety margin around the artwork so the top actions stay
+                // reachable and the right column does not overpower the information panel.
+                val coverFrameSize = minOf(
+                    maxWidth * 0.84f,
+                    maxHeight * 0.72f
+                )
+                val reflectionHeight = (coverFrameSize * 0.16f).coerceIn(20.dp, 56.dp)
                 val visualCompositionHeight = coverFrameSize + reflectionHeight
                 Box(
                     modifier = Modifier

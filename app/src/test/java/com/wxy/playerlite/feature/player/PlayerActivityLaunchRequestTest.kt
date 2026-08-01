@@ -85,4 +85,19 @@ class PlayerActivityLaunchRequestTest {
             resolvePlayerRequestedOrientation(PlayerOrientationMode.PORTRAIT_LOCKED)
         )
     }
+
+    @Test
+    fun closePlayerActivity_shouldDismissPlaylistBeforeFinishing() {
+        val actions = mutableListOf<String>()
+
+        closePlayerActivity(
+            dismissPlaylistSheet = { actions += "dismiss_playlist" },
+            finishActivity = { actions += "finish_activity" }
+        )
+
+        assertEquals(
+            listOf("dismiss_playlist", "finish_activity"),
+            actions
+        )
+    }
 }

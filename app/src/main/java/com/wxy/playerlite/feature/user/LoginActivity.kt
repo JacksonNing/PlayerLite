@@ -200,7 +200,7 @@ private fun LoginTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_playerlite_brand),
+                painter = painterResource(R.drawable.ic_playerlite_note_brand),
                 contentDescription = null,
                 modifier = Modifier.size(36.dp)
             )

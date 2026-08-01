@@ -47,10 +47,6 @@ internal class TrackPreparationCoordinator(
             )
         }
 
-        if (sourceUri.scheme == "content" && !sourceRepository.hasPersistedReadPermission(sourceUri)) {
-            return PreparationResult.Invalid("Missing persisted read permission for content URI")
-        }
-
         val source = withContext(ioDispatcher) {
             sourceRepository.createPlayableSource(sourceUri)
         } ?: return PreparationResult.Invalid("Failed to open media source")

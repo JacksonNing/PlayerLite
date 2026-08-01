@@ -37,17 +37,19 @@ internal fun PlayerLandscapeHeroPanel(
 ) {
     val hasLyricSummary = lyricSummaryText.isNotBlank()
     val heroTitleStyle = titleTextStyle.copy(
-        fontSize = (titleTextStyle.fontSize.value * 0.94f).coerceIn(30f, 38f).sp,
-        lineHeight = (titleTextStyle.fontSize.value * 1.02f).coerceIn(34f, 42f).sp,
+        // Keep the landscape title compact enough to leave room for the artist and lyric
+        // context. The base title token is tuned for portrait, so clamp it explicitly here.
+        fontSize = titleTextStyle.fontSize.value.coerceIn(28f, 34f).sp,
+        lineHeight = (titleTextStyle.fontSize.value * 1.16f).coerceIn(32f, 38f).sp,
         letterSpacing = 0.sp
     )
     val heroArtistStyle = artistTextStyle.copy(
-        fontSize = (artistTextStyle.fontSize.value * 1.18f).coerceIn(21f, 28f).sp,
-        lineHeight = (artistTextStyle.fontSize.value * 1.22f).coerceIn(25f, 32f).sp
+        fontSize = (artistTextStyle.fontSize.value * 1.06f).coerceIn(18f, 22f).sp,
+        lineHeight = (artistTextStyle.fontSize.value * 1.16f).coerceIn(22f, 26f).sp
     )
     val heroLyricStyle = lyricTextStyle.copy(
-        fontSize = (lyricTextStyle.fontSize.value * 0.98f).coerceIn(14f, 18f).sp,
-        lineHeight = (lyricTextStyle.fontSize.value * 1.14f).coerceIn(18f, 24f).sp
+        fontSize = lyricTextStyle.fontSize.value.coerceIn(14f, 16f).sp,
+        lineHeight = (lyricTextStyle.fontSize.value * 1.18f).coerceIn(18f, 21f).sp
     )
 
     Column(
@@ -63,9 +65,9 @@ internal fun PlayerLandscapeHeroPanel(
         Text(
             text = trackTitle,
             style = heroTitleStyle,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             color = Color.White,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.testTag("player_screen_title")
         )

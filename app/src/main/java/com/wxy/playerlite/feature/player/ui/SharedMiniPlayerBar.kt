@@ -402,21 +402,9 @@ internal fun SharedMiniPlayerBar(
                                 },
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            Text(
-                                text = state.contentLine,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Clip,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        repeatDelayMillis = 1_000,
-                                        spacing = MarqueeSpacing(24.dp)
-                                    )
-                                    .testTag(testTags.titleTag)
+                            SharedMiniPlayerContentLine(
+                                contentLine = state.contentLine,
+                                testTag = testTags.titleTag
                             )
                         }
                     }
@@ -452,6 +440,29 @@ internal fun SharedMiniPlayerBar(
             }
         }
     }
+}
+
+@Composable
+private fun SharedMiniPlayerContentLine(
+    contentLine: String,
+    testTag: String
+) {
+    Text(
+        text = contentLine,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Clip,
+        modifier = Modifier
+            .fillMaxWidth()
+            .basicMarquee(
+                iterations = Int.MAX_VALUE,
+                repeatDelayMillis = 1_000,
+                spacing = MarqueeSpacing(24.dp)
+            )
+            .testTag(testTag)
+    )
 }
 
 @Composable

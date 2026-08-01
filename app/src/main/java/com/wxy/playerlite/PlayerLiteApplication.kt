@@ -1,6 +1,8 @@
 package com.wxy.playerlite
 
 import android.app.Application
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import com.wxy.playerlite.core.AppContainer
 import com.wxy.playerlite.feature.home.HomeHostDependencies
 import com.wxy.playerlite.feature.home.HomeHostDependenciesProvider
@@ -11,7 +13,12 @@ import com.wxy.playerlite.feature.search.SearchRouteHandler
 import com.wxy.playerlite.feature.search.playSearchSongs
 import com.wxy.playerlite.feature.search.searchRouteIntent
 
-class PlayerLiteApplication : Application(), SearchHostDependenciesProvider, HomeHostDependenciesProvider {
+class PlayerLiteApplication : Application(),
+    ViewModelStoreOwner,
+    SearchHostDependenciesProvider,
+    HomeHostDependenciesProvider {
+    override val viewModelStore = ViewModelStore()
+
     override fun homeHostDependencies(): HomeHostDependencies {
         return AppContainer.homeHostDependencies(this)
     }
@@ -30,5 +37,10 @@ class PlayerLiteApplication : Application(), SearchHostDependenciesProvider, Hom
                 )
             }
         )
+    }
+
+    override fun onTerminate() {
+        viewModelStore.clear()
+        super.onTerminate()
     }
 }

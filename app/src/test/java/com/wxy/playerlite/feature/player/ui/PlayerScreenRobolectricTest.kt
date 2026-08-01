@@ -800,7 +800,7 @@ class PlayerScreenRobolectricTest {
             PlayerLiteTheme {
                 Box(modifier = Modifier.size(width = 960.dp, height = 540.dp)) {
                     PlayerScreen(
-                        fileName = "那天雨停了",
+                        fileName = "这一张机票到底花了多少钱才到手的版本",
                         artistText = "田馥甄",
                         status = "正在播放",
                         hasSelection = true,
@@ -867,9 +867,21 @@ class PlayerScreenRobolectricTest {
             .onNodeWithTag("player_screen_cover_card")
             .fetchSemanticsNode()
             .boundsInRoot
+        val titleBounds = composeRule
+            .onNodeWithTag("player_screen_title")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val infoBounds = composeRule
+            .onNodeWithTag("player_screen_landscape_info_group")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue(
+            "Expected the landscape title to stay within two compact lines, but got title=$titleBounds info=$infoBounds",
+            titleBounds.height <= 88f && titleBounds.width <= infoBounds.width + 1f
+        )
         assertTrue(
             "Expected right-side visual panel to remain substantial after shrinking the cover composition, but got visual=$visualPanelBounds controls=$controlsPanelBounds",
-            visualPanelBounds.width >= controlsPanelBounds.width * 0.82f
+            visualPanelBounds.width >= controlsPanelBounds.width * 0.80f
         )
         assertTrue(
             "Expected landscape cover frame to keep a strong presence without filling the entire stage, but got cover=$coverFrameBounds visual=$visualSectionBounds",
@@ -878,6 +890,11 @@ class PlayerScreenRobolectricTest {
         assertTrue(
             "Expected cover frame to occupy most of the right-side panel while keeping more breathing room, but got cover=$coverFrameBounds panel=$visualPanelBounds",
             coverFrameBounds.width >= visualPanelBounds.width * 0.82f
+        )
+        assertTrue(
+            "Expected the reduced cover composition to leave a visible edge margin, but got cover=$coverFrameBounds panel=$visualPanelBounds",
+            coverFrameBounds.width <= visualPanelBounds.width * 0.90f &&
+                coverFrameBounds.top >= visualPanelBounds.top + (visualPanelBounds.height * 0.08f)
         )
         assertTrue(
             "Expected landscape cover frame to stay close to a square while keeping the border, but got cover=$coverFrameBounds",
@@ -1148,12 +1165,12 @@ class PlayerScreenRobolectricTest {
             controlsBounds.height <= 72f
         )
         assertTrue(
-            "Expected playback controls to dock near the landscape visual baseline, but got controls=$controlsBounds visualAnchor=$visualAnchorBounds",
-            controlsBounds.bottom >= visualAnchorBounds.bottom - 12f
+            "Expected playback controls to stay just above the landscape visual baseline, but got controls=$controlsBounds visualAnchor=$visualAnchorBounds",
+            controlsBounds.bottom <= visualAnchorBounds.bottom - 10f
         )
         assertTrue(
-            "Expected playback controls to sit noticeably lower in the landscape panel, but got controls=$controlsBounds panel=$controlsPanelBounds",
-            controlsBounds.bottom >= controlsPanelBounds.bottom - 18f
+            "Expected playback controls to stay clear of the panel bottom safe gap, but got controls=$controlsBounds panel=$controlsPanelBounds",
+            controlsBounds.bottom <= controlsPanelBounds.bottom - 12f
         )
         assertTrue(
             "Expected the bottom control group to sit near the bottom edge of the landscape panel, but got bottomGroup=$bottomGroupBounds panel=$controlsPanelBounds",

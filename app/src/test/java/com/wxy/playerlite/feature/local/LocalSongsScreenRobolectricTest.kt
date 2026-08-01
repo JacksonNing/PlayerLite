@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -74,5 +76,64 @@ class LocalSongsScreenRobolectricTest {
             assertEquals("local-1", insertNextTrackId)
             assertEquals("local-1", detailTrackId)
         }
+    }
+
+    @Test
+    fun cachedSongsState_pullToRefresh_shouldRequestScan() {
+        var scanCount = 0
+
+        composeRule.setContent {
+            PlayerLiteTheme {
+                LocalSongsScreen(
+                    state = LocalSongsUiState(
+                        songs = listOf(
+                            LocalSongEntry(
+                                id = "local-1",
+                                contentUri = "content://media/external/audio/media/1",
+                                title = "晴天",
+                                artist = "周杰伦",
+                                album = "叶惠美",
+                                durationMs = 269000L
+                            )
+                        ),
+                        hasCachedSongs = true
+                    ),
+                    onBack = {},
+                    onRequestPermission = {},
+                    onScan = { scanCount += 1 },
+                    onPlayAll = {},
+                    onSongClick = {},
+                    onSongInsertNext = {},
+                    onSongOpenDetail = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("local_songs_list")
+            .performTouchInput { swipeDown() }
+
+        composeRule.runOnIdle {
+            assertEquals(1, scanCount)
+        }
+    }
+
+    @Test
+    fun emptyState_shouldRenderWithoutPullRefreshCrash() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                LocalSongsScreen(
+                    state = LocalSongsUiState(),
+                    onBack = {},
+                    onRequestPermission = {},
+                    onScan = {},
+                    onPlayAll = {},
+                    onSongClick = {},
+                    onSongInsertNext = {},
+                    onSongOpenDetail = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("还没有扫描到本地歌曲").assertIsDisplayed()
     }
 }

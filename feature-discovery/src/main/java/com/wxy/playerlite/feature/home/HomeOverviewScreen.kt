@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -42,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,13 +68,15 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun HomeOverviewScreen(
     overviewState: HomeOverviewUiState,
     bottomContentPadding: Dp,
     onSearchClick: () -> Unit,
     onRetry: () -> Unit,
     onAction: (HomeAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRefresh: () -> Unit = onRetry
 ) {
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Box(
@@ -82,75 +86,81 @@ fun HomeOverviewScreen(
                 brush = homeOverviewBackgroundBrush
             )
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("home_discovery_list"),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                top = 88.dp,
-                end = 20.dp,
-                bottom = bottomContentPadding + navigationBottomPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.sectionSpacing)
+        PullToRefreshBox(
+            isRefreshing = overviewState.isLoading,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
         ) {
-            if (overviewState.errorMessage != null && overviewState.sections.isNotEmpty()) {
-                item {
-                    HomeOverviewInlineError(
-                        message = overviewState.errorMessage,
-                        onRetry = onRetry
-                    )
-                }
-            }
-
-            when {
-                overviewState.isLoading && overviewState.sections.isEmpty() -> {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("home_discovery_list"),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    top = 88.dp,
+                    end = 20.dp,
+                    bottom = bottomContentPadding + navigationBottomPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.sectionSpacing)
+            ) {
+                if (overviewState.errorMessage != null && overviewState.sections.isNotEmpty()) {
                     item {
-                        HomeOverviewStatusCard(
-                            title = "发现内容加载中",
-                            subtitle = "正在同步首页推荐内容，请稍候。"
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                        HomeOverviewInlineError(
+                            message = overviewState.errorMessage,
+                            onRetry = onRetry
+                        )
                     }
                 }
 
-                !overviewState.isLoading && overviewState.sections.isEmpty() && overviewState.errorMessage != null -> {
-                    item {
-                        HomeOverviewStatusCard(
-                            title = "首页加载失败",
-                            subtitle = overviewState.errorMessage
-                        ) {
-                            OutlinedButton(onClick = onRetry) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = null
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("重新加载")
+                when {
+                    overviewState.isLoading && overviewState.sections.isEmpty() -> {
+                        item {
+                            HomeOverviewStatusCard(
+                                title = "发现内容加载中",
+                                subtitle = "正在同步首页推荐内容，请稍候。"
+                            ) {
+                                CircularProgressIndicator()
                             }
                         }
                     }
-                }
 
-                !overviewState.isLoading && overviewState.sections.isEmpty() -> {
-                    item {
-                        HomeOverviewStatusCard(
-                            title = "首页暂无发现内容",
-                            subtitle = "稍后再来看看新的推荐内容。"
-                        )
+                    !overviewState.isLoading && overviewState.sections.isEmpty() && overviewState.errorMessage != null -> {
+                        item {
+                            HomeOverviewStatusCard(
+                                title = "首页加载失败",
+                                subtitle = overviewState.errorMessage
+                            ) {
+                                OutlinedButton(onClick = onRetry) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Refresh,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("重新加载")
+                                }
+                            }
+                        }
                     }
-                }
 
-                else -> {
-                    items(
-                        items = overviewState.sections,
-                        key = { section -> section.code }
-                    ) { section ->
-                        HomeDiscoverySection(
-                            section = section,
-                            onAction = onAction
-                        )
+                    !overviewState.isLoading && overviewState.sections.isEmpty() -> {
+                        item {
+                            HomeOverviewStatusCard(
+                                title = "首页暂无发现内容",
+                                subtitle = "稍后再来看看新的推荐内容。"
+                            )
+                        }
+                    }
+
+                    else -> {
+                        items(
+                            items = overviewState.sections,
+                            key = { section -> section.code }
+                        ) { section ->
+                            HomeDiscoverySection(
+                                section = section,
+                                onAction = onAction
+                            )
+                        }
                     }
                 }
             }

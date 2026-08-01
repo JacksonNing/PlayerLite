@@ -19,13 +19,13 @@ internal class MediaSourceRepository(
             }
             return null
         }
-        if (uri.scheme == "content" && !hasPersistedReadPermission(uri)) {
+        val isReadable = runCatching {
+            appContext.contentResolver.openInputStream(uri)?.use { true } ?: false
+        }.getOrDefault(false)
+        if (!isReadable) {
             return null
         }
-        return runCatching {
-            appContext.contentResolver.openInputStream(uri)?.close()
-            ContentUriSource(appContext, uri)
-        }.getOrNull()
+        return ContentUriSource(appContext, uri)
     }
 
     fun hasPersistedReadPermission(uri: Uri): Boolean {

@@ -10,8 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,12 +25,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -43,20 +46,30 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import coil.compose.AsyncImage
 import com.wxy.playerlite.feature.user.AccountVisualStyle
 import com.wxy.playerlite.feature.user.LoginActivity
 import com.wxy.playerlite.playback.model.PlaybackAudioQuality
@@ -68,11 +81,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val SettingsPageBackground = Color(0xFFF7F3F0)
-private val SettingsListSurface = Color(0xFFFFFDFB)
-private val SettingsInlineSurface = Color(0xFFFBF7F4)
-private val SettingsBorder = Color(0x17261D1A)
-private val SettingsDivider = Color(0x14261D1A)
 private val SettingsGreenText = Color(0xFF237653)
 private val SettingsGreenSurface = Color(0x1A1F8758)
 
@@ -193,6 +201,10 @@ internal fun SettingsScreen(
     onSetActiveAudioSource: (String) -> Unit,
     onRemoveAudioSource: (String) -> Unit
 ) {
+    var isCacheLimitDialogVisible by remember { mutableStateOf(false) }
+    var isPrewarmBudgetDialogVisible by remember { mutableStateOf(false) }
+    var isOnlineSourceImportDialogVisible by remember { mutableStateOf(false) }
+
     if (state.accountState.isLogoutConfirmVisible) {
         AlertDialog(
             onDismissRequest = onDismissLogoutConfirm,
@@ -274,22 +286,57 @@ internal fun SettingsScreen(
             }
         )
     }
+    if (isCacheLimitDialogVisible) {
+        SettingsCacheLimitDialog(
+            playbackState = state.playbackPreferencesState,
+            cacheState = state.cacheState,
+            onPlaybackCacheLimitChange = onPlaybackCacheLimitChange,
+            onDismiss = { isCacheLimitDialogVisible = false },
+            onSave = {
+                onSavePlaybackCacheLimit()
+                isCacheLimitDialogVisible = false
+            }
+        )
+    }
+    if (isPrewarmBudgetDialogVisible) {
+        SettingsPrewarmBudgetDialog(
+            selectedPreset = PlaybackPrewarmBudgetPreset.fromPreferences(
+                state.playbackPreferencesState.prewarmPreferences.sanitized()
+            ),
+            onDismiss = { isPrewarmBudgetDialogVisible = false },
+            onPresetChange = { preset ->
+                onPlaybackPrewarmBudgetChange(preset)
+                isPrewarmBudgetDialogVisible = false
+            }
+        )
+    }
+    if (isOnlineSourceImportDialogVisible) {
+        SettingsOnlineSourceImportDialog(
+            state = state.sourcesState,
+            onImportUrlChange = onPendingImportUrlChange,
+            onDismiss = { isOnlineSourceImportDialogVisible = false },
+            onImport = {
+                onImportAudioSourceFromUrl()
+                isOnlineSourceImportDialogVisible = false
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = SettingsPageBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("设置")
-                    }
+                    Text(
+                        text = "设置",
+                        fontSize = 19.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SettingsPageBackground
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -305,7 +352,6 @@ internal fun SettingsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SettingsPageBackground)
                 .padding(innerPadding)
         ) {
             LazyColumn(
@@ -313,8 +359,13 @@ internal fun SettingsScreen(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .testTag("settings_scroll_content"),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                contentPadding = PaddingValues(
+                    start = AccountVisualStyle.contentHorizontalPadding,
+                    top = 4.dp,
+                    end = AccountVisualStyle.contentHorizontalPadding,
+                    bottom = 36.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(26.dp)
             ) {
                 item {
                     SettingsAccountSection(
@@ -326,18 +377,24 @@ internal fun SettingsScreen(
                 item {
                     SettingsPlaybackPreferencesSection(
                         playbackState = state.playbackPreferencesState,
-                        cacheState = state.cacheState,
-                        onPlaybackCacheLimitChange = onPlaybackCacheLimitChange,
-                        onSavePlaybackCacheLimit = onSavePlaybackCacheLimit,
                         onShowPreferredAudioQualityDialog = onShowPreferredAudioQualityDialog,
                         onRestoreLastPlaybackOnStartupChange =
                             onRestoreLastPlaybackOnStartupChange,
                         onResumeFromLastPositionChange = onResumeFromLastPositionChange,
-                        onWeakNetworkAutoRetryChange = onWeakNetworkAutoRetryChange,
+                        onWeakNetworkAutoRetryChange = onWeakNetworkAutoRetryChange
+                    )
+                }
+                item {
+                    SettingsCachePolicySection(
+                        playbackState = state.playbackPreferencesState,
+                        cacheState = state.cacheState,
+                        onShowCacheLimitDialog = { isCacheLimitDialogVisible = true },
                         onShowCacheFailureNotificationsChange =
                             onShowCacheFailureNotificationsChange,
                         onPlaybackPrewarmEnabledChange = onPlaybackPrewarmEnabledChange,
-                        onPlaybackPrewarmBudgetChange = onPlaybackPrewarmBudgetChange
+                        onShowPrewarmBudgetDialog = {
+                            isPrewarmBudgetDialogVisible = true
+                        }
                     )
                 }
                 item {
@@ -350,8 +407,7 @@ internal fun SettingsScreen(
                 item {
                     SettingsAudioSourcesSection(
                         state = state.sourcesState,
-                        onImportUrlChange = onPendingImportUrlChange,
-                        onImportFromUrl = onImportAudioSourceFromUrl,
+                        onShowOnlineImport = { isOnlineSourceImportDialogVisible = true },
                         onImportFromLocal = onImportAudioSourceFromLocal,
                         onSetActiveSource = onSetActiveAudioSource,
                         onRemoveSource = onRemoveAudioSource
@@ -370,26 +426,22 @@ private fun SettingsGroup(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         if (title != null) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 4.dp)
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 2.dp)
             )
         }
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = SettingsListSurface,
-            border = BorderStroke(1.dp, SettingsBorder),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        ) {
-            Column(content = content)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            SettingsSectionBoundary()
+            content()
+            SettingsSectionBoundary()
         }
     }
 }
@@ -400,30 +452,54 @@ private fun SettingsAccountSection(
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
-    SettingsGroup(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("settings_account_section")
+            .testTag("settings_account_section"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier.size(44.dp),
-                shape = RoundedCornerShape(10.dp),
-                color = AccountVisualStyle.accentColor
+            Box(
+                modifier = Modifier.size(60.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = state.title.firstOrNull()?.uppercaseChar()?.toString() ?: "P",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold
+                if (!state.avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = state.avatarUrl,
+                        contentDescription = "用户头像",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f),
+                                shape = CircleShape
+                            ),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = CircleShape,
+                        color = AccountVisualStyle.accentSoftColor,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = null,
+                                tint = AccountVisualStyle.accentColor,
+                                modifier = Modifier.size(42.dp)
+                            )
+                        }
+                    }
                 }
             }
             Column(
@@ -432,7 +508,8 @@ private fun SettingsAccountSection(
             ) {
                 Text(
                     text = state.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 20.sp,
+                    lineHeight = 25.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -440,19 +517,22 @@ private fun SettingsAccountSection(
                 )
                 Text(
                     text = state.summary,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             if (state.isLoggedIn) {
-                OutlinedButton(
+                TextButton(
                     onClick = onLogoutClick,
                     enabled = !state.isBusy,
                     modifier = Modifier.testTag("settings_logout_button"),
-                    shape = RoundedCornerShape(9.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = AccountVisualStyle.accentTextColor
+                    ),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
                     if (state.isBusy) {
                         CircularProgressIndicator(
@@ -461,50 +541,46 @@ private fun SettingsAccountSection(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("退出")
+                    Text(
+                        text = "退出",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             } else {
                 Button(
                     onClick = onLoginClick,
                     enabled = !state.isBusy,
                     modifier = Modifier.testTag("settings_login_button"),
-                    shape = RoundedCornerShape(9.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccountVisualStyle.accentColor,
                         contentColor = Color.White
                     ),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                 ) {
                     Text("登录")
                 }
             }
         }
+        SettingsSectionBoundary()
     }
 }
 
 @Composable
 private fun SettingsPlaybackPreferencesSection(
     playbackState: SettingsPlaybackPreferencesUiState,
-    cacheState: SettingsCacheUiState,
-    onPlaybackCacheLimitChange: (String) -> Unit,
-    onSavePlaybackCacheLimit: () -> Unit,
     onShowPreferredAudioQualityDialog: () -> Unit,
     onRestoreLastPlaybackOnStartupChange: (Boolean) -> Unit,
     onResumeFromLastPositionChange: (Boolean) -> Unit,
-    onWeakNetworkAutoRetryChange: (Boolean) -> Unit,
-    onShowCacheFailureNotificationsChange: (Boolean) -> Unit,
-    onPlaybackPrewarmEnabledChange: (Boolean) -> Unit,
-    onPlaybackPrewarmBudgetChange: (PlaybackPrewarmBudgetPreset) -> Unit
+    onWeakNetworkAutoRetryChange: (Boolean) -> Unit
 ) {
     val behaviorPreferences = playbackState.behaviorPreferences
-    val cachePolicyPreferences = playbackState.cachePolicyPreferences
-    val prewarmPreferences = playbackState.prewarmPreferences.sanitized()
-    val prewarmPreset = PlaybackPrewarmBudgetPreset.fromPreferences(prewarmPreferences)
     SettingsGroup(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("settings_playback_preferences_section"),
-        title = "播放与缓存"
+        title = "播放"
     ) {
         SettingsRow(
             title = "默认音质",
@@ -516,75 +592,8 @@ private fun SettingsPlaybackPreferencesSection(
             onClick = onShowPreferredAudioQualityDialog
         )
         SettingsDividerLine()
-        SettingsRow(
-            title = "歌曲缓存上限",
-            subtitle = "只影响在线播放缓存",
-            value = "${cacheState.playbackCacheLimitBytes / BYTES_PER_MB} MB"
-        )
-        SettingsDividerLine()
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SettingsInlineSurface)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "调整缓存上限",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedTextField(
-                value = cacheState.pendingPlaybackCacheLimitMb,
-                onValueChange = onPlaybackCacheLimitChange,
-                label = { Text("歌曲缓存上限（MB）") },
-                singleLine = true,
-                shape = RoundedCornerShape(9.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("settings_playback_cache_limit_input")
-            )
-            cacheState.playbackCacheLimitMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AccountVisualStyle.accentTextColor,
-                    modifier = Modifier.testTag("settings_playback_cache_limit_feedback")
-                )
-            }
-            playbackState.feedbackMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AccountVisualStyle.accentTextColor,
-                    modifier = Modifier.testTag("settings_playback_quality_feedback")
-                )
-            }
-            Button(
-                onClick = onSavePlaybackCacheLimit,
-                enabled = !cacheState.isSavingPlaybackCacheLimit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("settings_playback_cache_limit_save"),
-                shape = RoundedCornerShape(9.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccountVisualStyle.accentColor,
-                    contentColor = Color.White
-                )
-            ) {
-                if (cacheState.isSavingPlaybackCacheLimit) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text("保存")
-            }
-        }
-        SettingsDividerLine()
         SettingsSwitchRow(
-            title = "启动后恢复上次播放",
+            title = "恢复上次播放",
             subtitle = "冷启动后恢复最近队列和当前歌曲",
             checked = behaviorPreferences.restoreLastPlaybackOnStartup,
             onCheckedChange = onRestoreLastPlaybackOnStartupChange,
@@ -594,11 +603,48 @@ private fun SettingsPlaybackPreferencesSection(
         SettingsDividerLine()
         SettingsSwitchRow(
             title = "断点续播",
-            subtitle = "恢复上次歌曲时跳到记录进度",
+            subtitle = "恢复歌曲时跳到上次记录的进度",
             checked = behaviorPreferences.resumeFromLastPosition,
             onCheckedChange = onResumeFromLastPositionChange,
             modifier = Modifier.testTag("settings_resume_from_last_position_switch"),
             switchTestTag = "settings_resume_from_last_position_switch_control"
+        )
+        SettingsDividerLine()
+        SettingsSwitchRow(
+            title = "弱网自动重试",
+            subtitle = "在线播放失败时重新解析并尝试起播",
+            checked = behaviorPreferences.weakNetworkAutoRetry,
+            onCheckedChange = onWeakNetworkAutoRetryChange,
+            modifier = Modifier.testTag("settings_weak_network_retry_switch"),
+            switchTestTag = "settings_weak_network_retry_switch_control"
+        )
+    }
+}
+
+@Composable
+private fun SettingsCachePolicySection(
+    playbackState: SettingsPlaybackPreferencesUiState,
+    cacheState: SettingsCacheUiState,
+    onShowCacheLimitDialog: () -> Unit,
+    onShowCacheFailureNotificationsChange: (Boolean) -> Unit,
+    onPlaybackPrewarmEnabledChange: (Boolean) -> Unit,
+    onShowPrewarmBudgetDialog: () -> Unit
+) {
+    val cachePolicyPreferences = playbackState.cachePolicyPreferences
+    val prewarmPreferences = playbackState.prewarmPreferences.sanitized()
+    val prewarmPreset = PlaybackPrewarmBudgetPreset.fromPreferences(prewarmPreferences)
+    SettingsGroup(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("settings_cache_policy_section"),
+        title = "缓存与预热"
+    ) {
+        SettingsRow(
+            title = "歌曲缓存上限",
+            subtitle = "只影响在线播放缓存",
+            value = "${cacheState.playbackCacheLimitBytes / BYTES_PER_MB} MB",
+            modifier = Modifier.testTag("settings_cache_limit_trigger"),
+            onClick = onShowCacheLimitDialog
         )
         SettingsDividerLine()
         SettingsSwitchRow(
@@ -619,60 +665,14 @@ private fun SettingsPlaybackPreferencesSection(
             switchTestTag = "settings_playback_prewarm_switch_control"
         )
         SettingsDividerLine()
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SettingsInlineSurface)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = "预热预算",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = formatPrewarmBudgetSummary(prewarmPreferences),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag("settings_playback_prewarm_budget_summary")
-                    )
-                }
-                Text(
-                    text = prewarmPreset.displayName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AccountVisualStyle.accentTextColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PlaybackPrewarmBudgetPreset.entries.forEach { preset ->
-                    OutlinedButton(
-                        onClick = { onPlaybackPrewarmBudgetChange(preset) },
-                        enabled = preset != prewarmPreset,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("settings_playback_prewarm_budget_${preset.name.lowercase()}"),
-                        shape = RoundedCornerShape(9.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                    ) {
-                        Text(preset.displayName)
-                    }
-                }
-            }
-        }
+        SettingsRow(
+            title = "预热预算",
+            subtitle = formatPrewarmBudgetSummary(prewarmPreferences),
+            value = prewarmPreset.displayName,
+            subtitleTestTag = "settings_playback_prewarm_budget_summary",
+            modifier = Modifier.testTag("settings_playback_prewarm_budget_trigger"),
+            onClick = onShowPrewarmBudgetDialog
+        )
         SettingsDividerLine()
         SettingsRow(
             title = "缓存清理策略",
@@ -681,16 +681,139 @@ private fun SettingsPlaybackPreferencesSection(
             valueTestTag = "settings_cache_cleanup_policy_value",
             modifier = Modifier.testTag("settings_cache_cleanup_policy")
         )
-        SettingsDividerLine()
-        SettingsSwitchRow(
-            title = "弱网自动重试",
-            subtitle = "在线播放失败时自动重新解析和起播",
-            checked = behaviorPreferences.weakNetworkAutoRetry,
-            onCheckedChange = onWeakNetworkAutoRetryChange,
-            modifier = Modifier.testTag("settings_weak_network_retry_switch"),
-            switchTestTag = "settings_weak_network_retry_switch_control"
-        )
     }
+}
+
+@Composable
+private fun SettingsCacheLimitDialog(
+    playbackState: SettingsPlaybackPreferencesUiState,
+    cacheState: SettingsCacheUiState,
+    onPlaybackCacheLimitChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("歌曲缓存上限") },
+        text = {
+            Column(
+                modifier = Modifier.testTag("settings_cache_limit_editor"),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "只限制在线播放产生的缓存，不影响本地歌曲。当前 ${cacheState.playbackCacheLimitBytes / BYTES_PER_MB} MB。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = cacheState.pendingPlaybackCacheLimitMb,
+                    onValueChange = onPlaybackCacheLimitChange,
+                    suffix = { Text("MB") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_playback_cache_limit_input")
+                )
+                cacheState.playbackCacheLimitMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AccountVisualStyle.accentTextColor,
+                        modifier = Modifier.testTag("settings_playback_cache_limit_feedback")
+                    )
+                }
+                playbackState.feedbackMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AccountVisualStyle.accentTextColor,
+                        modifier = Modifier.testTag("settings_playback_quality_feedback")
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                enabled = !cacheState.isSavingPlaybackCacheLimit,
+                modifier = Modifier.testTag("settings_playback_cache_limit_save")
+            ) {
+                if (cacheState.isSavingPlaybackCacheLimit) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("保存")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
+}
+
+@Composable
+private fun SettingsPrewarmBudgetDialog(
+    selectedPreset: PlaybackPrewarmBudgetPreset,
+    onDismiss: () -> Unit,
+    onPresetChange: (PlaybackPrewarmBudgetPreset) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("预热预算") },
+        text = {
+            Column {
+                PlaybackPrewarmBudgetPreset.entries.forEachIndexed { index, preset ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
+                        )
+                    }
+                    val isSelected = preset == selectedPreset
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isSelected) { onPresetChange(preset) }
+                            .padding(vertical = 14.dp)
+                            .testTag(
+                                "settings_playback_prewarm_budget_${preset.name.lowercase()}"
+                            ),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = preset.displayName,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = formatPrewarmBudgetSummary(
+                                    preset.toPreferences(enabled = true)
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (isSelected) {
+                            Text(
+                                text = "当前",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = AccountVisualStyle.accentTextColor,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 private fun formatPrewarmBudgetSummary(
@@ -730,43 +853,20 @@ private fun SettingsCacheSection(
             )
         }
         SettingsDividerLine()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SettingsInlineSurface)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            OutlinedButton(
-                onClick = onRefresh,
-                enabled = !state.isRefreshing && !state.isClearing,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(9.dp)
-            ) {
-                Text("刷新")
-            }
-            Button(
-                onClick = onClear,
-                enabled = !state.isRefreshing && !state.isClearing,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("settings_clear_cache_button"),
-                shape = RoundedCornerShape(9.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccountVisualStyle.accentColor,
-                    contentColor = Color.White
-                )
-            ) {
-                if (state.isClearing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text("清理")
-            }
-        }
+        SettingsActionRow(
+            title = if (state.isRefreshing) "正在刷新" else "刷新缓存统计",
+            enabled = !state.isRefreshing && !state.isClearing,
+            onClick = onRefresh,
+            modifier = Modifier.testTag("settings_refresh_cache_button")
+        )
+        SettingsDividerLine()
+        SettingsActionRow(
+            title = if (state.isClearing) "正在清理" else "清理全部缓存",
+            enabled = !state.isRefreshing && !state.isClearing,
+            destructive = true,
+            onClick = onClear,
+            modifier = Modifier.testTag("settings_clear_cache_button")
+        )
         state.feedbackMessage?.let { message ->
             Text(
                 text = message,
@@ -787,8 +887,7 @@ private fun SettingsCacheSection(
 @Composable
 private fun SettingsAudioSourcesSection(
     state: SettingsSourcesUiState,
-    onImportUrlChange: (String) -> Unit,
-    onImportFromUrl: () -> Unit,
+    onShowOnlineImport: () -> Unit,
     onImportFromLocal: () -> Unit,
     onSetActiveSource: (String) -> Unit,
     onRemoveSource: (String) -> Unit
@@ -809,66 +908,21 @@ private fun SettingsAudioSourcesSection(
                 .testTag("settings_audio_source_current_summary")
         )
         SettingsDividerLine()
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SettingsInlineSurface)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "导入音源",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedTextField(
-                value = state.pendingImportUrl,
-                onValueChange = onImportUrlChange,
-                label = { Text("在线导入地址") },
-                placeholder = { Text("https://cdn.example.com/source.json") },
-                singleLine = true,
-                shape = RoundedCornerShape(9.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("settings_audio_source_import_url_input")
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Button(
-                    onClick = onImportFromUrl,
-                    enabled = !state.isImporting,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("settings_audio_source_import_url_submit"),
-                    shape = RoundedCornerShape(9.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccountVisualStyle.accentColor,
-                        contentColor = Color.White
-                    )
-                ) {
-                    if (state.isImporting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("在线导入")
-                }
-                OutlinedButton(
-                    onClick = onImportFromLocal,
-                    enabled = !state.isImporting,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("settings_audio_source_import_local"),
-                    shape = RoundedCornerShape(9.dp)
-                ) {
-                    Text("本地 JSON")
-                }
-            }
-        }
+        SettingsRow(
+            title = "在线导入音源",
+            subtitle = "通过音源清单地址添加",
+            modifier = Modifier.testTag("settings_audio_source_import_url_trigger"),
+            enabled = !state.isImporting,
+            onClick = onShowOnlineImport
+        )
+        SettingsDividerLine()
+        SettingsRow(
+            title = "从本地文件导入",
+            subtitle = "选择 JSON 音源清单",
+            modifier = Modifier.testTag("settings_audio_source_import_local"),
+            enabled = !state.isImporting,
+            onClick = onImportFromLocal
+        )
         state.importFeedbackMessage?.let { message ->
             Text(
                 text = message,
@@ -914,6 +968,66 @@ private fun SettingsAudioSourcesSection(
 }
 
 @Composable
+private fun SettingsOnlineSourceImportDialog(
+    state: SettingsSourcesUiState,
+    onImportUrlChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onImport: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("在线导入音源") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "粘贴音源 JSON 清单地址。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = state.pendingImportUrl,
+                    onValueChange = onImportUrlChange,
+                    label = { Text("在线导入地址") },
+                    placeholder = { Text("https://cdn.example.com/source.json") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_audio_source_import_url_input")
+                )
+                state.validationMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AccountVisualStyle.accentTextColor,
+                        modifier = Modifier.testTag("settings_audio_source_validation")
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onImport,
+                enabled = !state.isImporting,
+                modifier = Modifier.testTag("settings_audio_source_import_url_submit")
+            ) {
+                if (state.isImporting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("导入")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
+}
+
+@Composable
 private fun SettingsSwitchRow(
     title: String,
     subtitle: String,
@@ -926,22 +1040,24 @@ private fun SettingsSwitchRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 2.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = 12.5.sp,
+                lineHeight = 17.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -950,7 +1066,18 @@ private fun SettingsSwitchRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            modifier = switchTestTag?.let { Modifier.testTag(it) } ?: Modifier
+            modifier = (switchTestTag?.let { Modifier.testTag(it) } ?: Modifier)
+                .scale(0.82f),
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = AccountVisualStyle.accentColor.copy(alpha = 0.86f),
+                checkedThumbColor = Color.White,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                disabledUncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                disabledUncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = 0.28f
+                )
+            )
         )
     }
 }
@@ -961,6 +1088,7 @@ private fun SettingsRow(
     subtitle: String? = null,
     value: String? = null,
     modifier: Modifier = Modifier,
+    subtitleTestTag: String? = null,
     valueTestTag: String? = null,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null
@@ -975,45 +1103,50 @@ private fun SettingsRow(
                     Modifier
                 }
             )
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 2.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.Medium
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.5.sp,
+                    lineHeight = 17.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = subtitleTestTag?.let { Modifier.testTag(it) } ?: Modifier
                 )
             }
         }
-    if (value != null) {
-        val valueModifier = Modifier.widthIn(max = 132.dp)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = valueTestTag?.let { valueModifier.testTag(it) } ?: valueModifier
-        )
-    }
-        if (onClick != null) {
+        if (value != null) {
+            val valueModifier = Modifier.widthIn(max = 132.dp)
             Text(
-                text = "›",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = value,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = valueTestTag?.let { valueModifier.testTag(it) } ?: valueModifier
+            )
+        }
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(19.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f)
             )
         }
     }
@@ -1022,9 +1155,55 @@ private fun SettingsRow(
 @Composable
 private fun SettingsDividerLine() {
     HorizontalDivider(
-        modifier = Modifier.fillMaxWidth(),
-        color = SettingsDivider
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 2.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
     )
+}
+
+@Composable
+private fun SettingsSectionBoundary() {
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)
+    )
+}
+
+@Composable
+private fun SettingsActionRow(
+    title: String,
+    enabled: Boolean,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 2.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            color = if (destructive) {
+                AccountVisualStyle.accentTextColor
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            fontWeight = FontWeight.Medium
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(19.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f)
+        )
+    }
 }
 
 @Composable
@@ -1037,8 +1216,8 @@ private fun AudioSourceRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+            .padding(horizontal = 2.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1051,8 +1230,9 @@ private fun AudioSourceRow(
             ) {
                 Text(
                     text = item.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = item.sourceStatusSummary(),
@@ -1112,24 +1292,25 @@ private fun AudioSourceRow(
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!item.isActive) {
-                OutlinedButton(
+                TextButton(
                     onClick = { onSetActiveSource(item.id) },
                     enabled = item.enabled,
-                    modifier = Modifier.testTag("settings_audio_source_activate_${item.id}"),
-                    shape = RoundedCornerShape(9.dp)
+                    modifier = Modifier.testTag("settings_audio_source_activate_${item.id}")
                 ) {
                     Text("设为当前")
                 }
             }
             if (!item.isBuiltIn) {
-                OutlinedButton(
+                TextButton(
                     onClick = { onRemoveSource(item.id) },
                     modifier = Modifier.testTag("settings_audio_source_remove_${item.id}"),
-                    shape = RoundedCornerShape(9.dp)
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = AccountVisualStyle.accentTextColor
+                    )
                 ) {
                     Text("删除")
                 }

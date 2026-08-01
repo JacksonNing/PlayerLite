@@ -31,6 +31,13 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
+      - name: Build FFmpeg for Android
+        shell: bash
+        run: |
+          sdkmanager "ndk;27.0.12077973"
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.0.12077973" \
+            bash scripts/build_ffmpeg_android.sh
+
       - name: Resolve release version
         id: release-version
         shell: bash
@@ -98,6 +105,16 @@ jobs:
             echo "apksigner not found under $ANDROID_HOME/build-tools" >&2
             exit 1
           fi
+          for abi in arm64-v8a armeabi-v7a; do
+            expected_entry="lib/$abi/libffmpeg.so"
+            packaged_entry="$(
+              unzip -Z1 "$apk_path" "$expected_entry" 2>/dev/null || true
+            )"
+            if [[ "$packaged_entry" != "$expected_entry" ]]; then
+              echo "FFmpeg library missing from release APK: $expected_entry" >&2
+              exit 1
+            fi
+          done
           "$apksigner_path" verify --verbose --print-certs "$apk_path"
 
       - name: Upload APK to GitHub Release

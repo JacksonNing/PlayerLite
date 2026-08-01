@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import org.junit.Assert.assertEquals
@@ -51,6 +53,35 @@ class HomeOverviewScreenRobolectricTest {
             .performClick()
 
         assertTrue(clicked)
+    }
+
+    @Test
+    fun homeContent_pullToRefresh_shouldInvokeRefreshCallback() {
+        var refreshed = false
+
+        composeRule.setContent {
+            MaterialTheme {
+                HomeOverviewScreen(
+                    overviewState = HomeOverviewUiState(
+                        isLoading = false,
+                        sections = listOf(buildSongSection(songCount = 1)),
+                        searchKeywords = listOf("默认热搜")
+                    ),
+                    bottomContentPadding = 0.dp,
+                    onSearchClick = {},
+                    onRetry = {},
+                    onRefresh = { refreshed = true },
+                    onAction = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("home_discovery_list")
+            .performTouchInput { swipeDown() }
+
+        composeRule.runOnIdle {
+            assertTrue(refreshed)
+        }
     }
 
     @Test

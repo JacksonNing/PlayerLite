@@ -3,7 +3,6 @@ package com.wxy.playerlite.feature.detail
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import com.wxy.playerlite.feature.player.PlayerViewModel
+import com.wxy.playerlite.feature.player.sharedPlayerViewModels
 import com.wxy.playerlite.feature.player.model.AUDIO_TRACK_PLAYSTATE_PAUSED
 import com.wxy.playerlite.feature.player.model.AUDIO_TRACK_PLAYSTATE_PLAYING
 import com.wxy.playerlite.feature.player.model.PlayerUiState
@@ -27,7 +27,7 @@ import com.wxy.playerlite.feature.player.ui.components.PlaylistBottomSheet
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 
 abstract class BasePlaybackDetailActivity : ComponentActivity() {
-    private val playerViewModel: PlayerViewModel by viewModels()
+    private val playerViewModel: PlayerViewModel by sharedPlayerViewModels()
 
     internal fun setPlaybackDetailContent(
         content: @Composable (bottomOverlayPadding: Dp) -> Unit

@@ -44,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -218,143 +219,149 @@ internal fun LocalSongsScreen(
             )
         }
     ) { innerPadding ->
-        when {
-            state.requiresPermission -> {
-                LocalSongsPermissionState(
-                    onRequestPermission = onRequestPermission,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
+        PullToRefreshBox(
+            isRefreshing = state.isScanning,
+            onRefresh = onScan,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when {
+                state.requiresPermission -> {
+                    LocalSongsPermissionState(
+                        onRequestPermission = onRequestPermission,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
 
-            state.isLoading -> {
-                LocalSongsLoadingState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
+                state.isLoading -> {
+                    LocalSongsLoadingState(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
 
-            state.errorMessage != null && state.songs.isEmpty() -> {
-                LocalSongsStatusState(
-                    title = "本地歌曲加载失败",
-                    subtitle = state.errorMessage,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
+                state.errorMessage != null && state.songs.isEmpty() -> {
+                    LocalSongsStatusState(
+                        title = "本地歌曲加载失败",
+                        subtitle = state.errorMessage,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
 
-            state.songs.isEmpty() -> {
-                LocalSongsStatusState(
-                    title = "还没有扫描到本地歌曲",
-                    subtitle = "点击右上角“扫描”后，这里的结果会被缓存，下次打开可直接展示。",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
+                state.songs.isEmpty() -> {
+                    LocalSongsStatusState(
+                        title = "还没有扫描到本地歌曲",
+                        subtitle = "点击右上角“扫描”后，这里的结果会被缓存，下次打开可直接展示。",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .testTag("local_songs_list"),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        Button(
-                            onClick = onPlayAll,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("local_songs_play_all")
-                        ) {
-                            Text("播放全部")
-                        }
-                    }
-                    itemsIndexed(
-                        items = state.songs,
-                        key = { _, item -> item.id }
-                    ) { index, item ->
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSongClick(index) }
-                                .testTag("local_songs_item_${item.id}"),
-                            shape = RoundedCornerShape(20.dp),
-                            tonalElevation = 2.dp,
-                            shadowElevation = 0.dp
-                        ) {
-                            Row(
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .testTag("local_songs_list"),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = onPlayAll,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    .testTag("local_songs_play_all")
                             ) {
-                                Surface(
-                                    modifier = Modifier.size(40.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                Text("播放全部")
+                            }
+                        }
+                        itemsIndexed(
+                            items = state.songs,
+                            key = { _, item -> item.id }
+                        ) { index, item ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSongClick(index) }
+                                    .testTag("local_songs_item_${item.id}"),
+                                shape = RoundedCornerShape(20.dp),
+                                tonalElevation = 2.dp,
+                                shadowElevation = 0.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.LibraryMusic,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = item.title,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${item.artist} · ${item.album}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                var menuExpanded by remember(item.id) { mutableStateOf(false) }
-                                Box {
-                                    IconButton(
-                                        onClick = { menuExpanded = true },
-                                        modifier = Modifier.testTag("local_songs_item_more_${item.id}")
+                                    Surface(
+                                        modifier = Modifier.size(40.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.MoreVert,
-                                            contentDescription = "更多操作"
+                                            imageVector = Icons.Rounded.LibraryMusic,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(8.dp)
                                         )
                                     }
-                                    DropdownMenu(
-                                        expanded = menuExpanded,
-                                        onDismissRequest = { menuExpanded = false }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("下一首播放") },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onSongInsertNext(item)
-                                            }
+                                        Text(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
-                                        DropdownMenuItem(
-                                            text = { Text("查看歌曲详情") },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onSongOpenDetail(item)
-                                            }
+                                        Text(
+                                            text = "${item.artist} · ${item.album}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+                                    }
+                                    var menuExpanded by remember(item.id) { mutableStateOf(false) }
+                                    Box {
+                                        IconButton(
+                                            onClick = { menuExpanded = true },
+                                            modifier = Modifier.testTag("local_songs_item_more_${item.id}")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.MoreVert,
+                                                contentDescription = "更多操作"
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = menuExpanded,
+                                            onDismissRequest = { menuExpanded = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("下一首播放") },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    onSongInsertNext(item)
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("查看歌曲详情") },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    onSongOpenDetail(item)
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -154,7 +154,7 @@ internal data class SettingsAccountUiState(
     val isLoggedIn: Boolean = false,
     val isBusy: Boolean = false,
     val title: String = "未登录",
-    val summary: String = "本地播放不受影响，在线播放前需要登录",
+    val summary: String = "本地可用，登录后开启在线播放",
     val avatarUrl: String? = null,
     val isLogoutConfirmVisible: Boolean = false
 )
