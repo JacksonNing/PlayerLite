@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -53,6 +54,29 @@ class HomeOverviewScreenRobolectricTest {
             .performClick()
 
         assertTrue(clicked)
+    }
+
+    @Test
+    fun homeHeader_shouldShowGreetingWithoutBrandMark() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeOverviewScreen(
+                    overviewState = HomeOverviewUiState(
+                        isLoading = false,
+                        sections = emptyList(),
+                        searchKeywords = listOf("默认热搜")
+                    ),
+                    bottomContentPadding = 0.dp,
+                    onSearchClick = {},
+                    onRetry = {},
+                    onAction = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("home_header_greeting").assertIsDisplayed()
+        composeRule.onNodeWithText("晚上好").assertIsDisplayed()
+        composeRule.onAllNodesWithText("PlayerLite").assertCountEquals(0)
     }
 
     @Test
@@ -175,14 +199,16 @@ class HomeOverviewScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("home_banner_card_banner-1").assertHasClickAction()
-        composeRule.onNodeWithTag("home_discovery_card_playlist-1").assertHasClickAction()
+        composeRule.onNodeWithTag("home_discovery_list")
+            .performScrollToNode(hasTestTag("home_banner_card_playlist-1"))
+        composeRule.onNodeWithTag("home_banner_card_playlist-1").assertHasClickAction()
         composeRule.onNodeWithTag("home_discovery_list")
             .performScrollToNode(hasTestTag("home_compact_card_shortcut-1"))
         composeRule.onNodeWithTag("home_compact_card_shortcut-1").assertHasClickAction()
     }
 
     @Test
-    fun songSection_shouldRenderThreeItemsPerColumnAndDispatchRowAndMenuActions() {
+    fun songSection_shouldRenderFullWidthPagesAndDispatchPlayRowAndMenuActions() {
         var capturedAction: HomeAction? = null
         val section = buildSongSection(songCount = 4)
 
@@ -203,7 +229,16 @@ class HomeOverviewScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("home_song_column_0").assertIsDisplayed()
-        composeRule.onNodeWithTag("home_song_column_1").assertIsDisplayed()
+        composeRule.onNodeWithText("3:01").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_song_play_all")
+            .assertHasClickAction()
+            .performClick()
+        assertEquals(
+            (section.items.first().action as HomeAction.ReplaceQueueAndOpenPlayer)
+                .copy(activeIndex = 0),
+            capturedAction
+        )
+
         composeRule.onNodeWithTag("home_song_row_song-1")
             .assertHasClickAction()
             .performClick()

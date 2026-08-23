@@ -10,8 +10,8 @@ internal object HomeChromeLayoutSpec {
     val bottomBarOuterVerticalPadding = 4.dp
     val bottomBarOuterHorizontalPadding = 26.dp
     val bottomBarBottomClearance = 4.dp
-    const val bottomBarWidthFraction = 0.76f
-    val bottomBarMaxWidth = 296.dp
+    const val bottomBarWidthFraction = 0.70f
+    val bottomBarMaxWidth = 276.dp
     val bottomBarOverlayHeight =
         bottomBarMinHeight + bottomBarOuterVerticalPadding + bottomBarBottomClearance
 

@@ -38,6 +38,7 @@ class MainBottomBarRobolectricTest {
         composeRule.onNodeWithTag("main_bottom_bar_container").assertIsDisplayed()
         composeRule.onNodeWithTag("main_bottom_bar_home").assertIsDisplayed()
         composeRule.onNodeWithTag("main_bottom_bar_user").assertIsDisplayed()
+        composeRule.onNodeWithTag("main_bottom_bar_divider").assertIsDisplayed()
 
         val bottomBarRootBounds = composeRule
             .onNodeWithTag("main_bottom_bar_root")
@@ -67,6 +68,11 @@ class MainBottomBarRobolectricTest {
         assertTrue(
             "Expected bottom bar to preserve horizontal page insets, screen=$screenBounds container=$containerBounds",
             containerBounds.width < screenBounds.width
+        )
+        val screenWidthFraction = containerBounds.width / screenBounds.width
+        assertTrue(
+            "Expected the compact bottom bar to occupy roughly 55%-70% of the screen, but was $screenWidthFraction",
+            screenWidthFraction in 0.55f..0.70f
         )
         val containerHeightDp = with(composeRule.density) { containerBounds.height.toDp() }
         assertTrue(

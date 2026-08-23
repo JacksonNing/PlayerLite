@@ -27,8 +27,8 @@ class HomeChromeLayoutSpecTest {
 
     @Test
     fun bottomBar_shouldRemainACompactFloatingBar() {
-        assertEquals(0.76f, HomeChromeLayoutSpec.bottomBarWidthFraction)
-        assertEquals(296.dp, HomeChromeLayoutSpec.bottomBarMaxWidth)
+        assertEquals(0.70f, HomeChromeLayoutSpec.bottomBarWidthFraction)
+        assertEquals(276.dp, HomeChromeLayoutSpec.bottomBarMaxWidth)
         assertEquals(26.dp, HomeChromeLayoutSpec.bottomBarOuterHorizontalPadding)
     }
 

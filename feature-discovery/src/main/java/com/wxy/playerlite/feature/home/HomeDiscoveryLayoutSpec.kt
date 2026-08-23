@@ -6,37 +6,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object HomeDiscoveryLayoutSpec {
-    val rowContentPadding = PaddingValues(horizontal = 4.dp)
-    val bannerContentPadding = PaddingValues(horizontal = 0.dp)
+    val rowContentPadding = PaddingValues(horizontal = 0.dp)
+    val bannerContentPadding = PaddingValues(end = 64.dp)
 
-    val bannerHeight = 206.dp
-    val discoveryCardWidth = 152.dp
-    val discoveryCardHeight = 222.dp
+    val pageTopPadding = 20.dp
+    val headerAvatarSize = 48.dp
+    val bannerHeight = 190.dp
+    val discoveryCardWidth = 112.dp
+    val discoveryCardHeight = 112.dp
     val compactCardWidth = 112.dp
-    val compactCardHeight = 116.dp
-    val compactImageSize = 56.dp
-    val itemSpacing = 14.dp
-    val sectionSpacing = 18.dp
+    val compactCardHeight = 104.dp
+    val compactImageSize = 48.dp
+    val itemSpacing = 12.dp
+    val sectionSpacing = 28.dp
     val songCardHeight = 72.dp
-    const val songCardWidthFraction = 0.7f
-    val songCardSpacing = 18.dp
     const val songColumnItemCount = 3
-    val songColumnItemSpacing = 0.dp
-    val songSectionCornerRadius = 0.dp
+    val songColumnItemSpacing = 2.dp
     val songSectionContentPadding = PaddingValues(0.dp)
-    val searchBoxCornerRadius = 16.dp
-    val searchBoxHeight = 50.dp
+    val searchBoxCornerRadius = 18.dp
+    val searchBoxHeight = 52.dp
     val searchBoxShadowElevation = 0.dp
     val bannerCardCornerRadius = 18.dp
-    val standardCardCornerRadius = 16.dp
-    val compactCardCornerRadius = 22.dp
-    val songCardCornerRadius = 10.dp
-    val songCardCoverSize = 52.dp
+    val standardCardCornerRadius = 14.dp
+    val compactCardCornerRadius = 18.dp
+    val songCardCoverSize = 48.dp
     val songCardCoverCornerRadius = 12.dp
-    val songCardMenuButtonSize = 24.dp
-    val songDividerStartPadding = 66.dp
-    val songDividerVerticalPadding = 4.dp
-    const val songDividerAlpha = 0.78f
+    val songCardMenuButtonSize = 36.dp
+    val songDividerStartPadding = 112.dp
+    val songDividerVerticalPadding = 0.dp
+    const val songDividerAlpha = 0.46f
     val sectionTitleFontSize = 22.sp
     val sectionTitleLineHeight = 28.sp
 

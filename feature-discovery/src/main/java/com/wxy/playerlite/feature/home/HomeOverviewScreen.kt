@@ -21,15 +21,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,14 +59,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -78,13 +81,12 @@ fun HomeOverviewScreen(
     modifier: Modifier = Modifier,
     onRefresh: () -> Unit = onRetry
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = homeOverviewBackgroundBrush
-            )
+            .background(visualTokens.canvas)
     ) {
         PullToRefreshBox(
             isRefreshing = overviewState.isLoading,
@@ -97,12 +99,19 @@ fun HomeOverviewScreen(
                     .testTag("home_discovery_list"),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    top = 88.dp,
+                    top = HomeDiscoveryLayoutSpec.pageTopPadding,
                     end = 20.dp,
                     bottom = bottomContentPadding + navigationBottomPadding
                 ),
                 verticalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.sectionSpacing)
             ) {
+                item(key = "home_header") {
+                    HomeHeader(
+                        keyword = overviewState.currentSearchKeyword,
+                        onSearchClick = onSearchClick
+                    )
+                }
+
                 if (overviewState.errorMessage != null && overviewState.sections.isNotEmpty()) {
                     item {
                         HomeOverviewInlineError(
@@ -165,13 +174,64 @@ fun HomeOverviewScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeHeader(
+    keyword: String,
+    onSearchClick: () -> Unit
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = "晚上好",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontSize = 34.sp,
+                    lineHeight = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.testTag("home_header_greeting")
+                )
+                Text(
+                    text = "听点什么？",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Normal,
+                    color = visualTokens.textSecondary
+                )
+            }
+            Surface(
+                modifier = Modifier.size(HomeDiscoveryLayoutSpec.headerAvatarSize),
+                shape = CircleShape,
+                color = visualTokens.surfaceHighlight,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountCircle,
+                        contentDescription = null,
+                        tint = visualTokens.accentSupport,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+        }
 
         HomeSearchBox(
-            keyword = overviewState.currentSearchKeyword,
-            onClick = onSearchClick,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(horizontal = 20.dp, vertical = 14.dp)
+            keyword = keyword,
+            onClick = onSearchClick
         )
     }
 }
@@ -182,17 +242,21 @@ private fun HomeSearchBox(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Surface(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(HomeDiscoveryLayoutSpec.searchBoxHeight)
-            .testTag("home_search_box_container")
-            .clickable(onClick = onClick),
+            .testTag("home_search_box_container"),
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.searchBoxCornerRadius),
-        color = homeSearchSurfaceColor,
+        color = visualTokens.surfacePrimary,
         tonalElevation = 0.dp,
         shadowElevation = HomeDiscoveryLayoutSpec.searchBoxShadowElevation,
-        border = null
+        border = BorderStroke(
+            width = 1.dp,
+            color = visualTokens.dividerSubtle
+        )
     ) {
         Box(
             modifier = Modifier
@@ -208,12 +272,12 @@ private fun HomeSearchBox(
                 Icon(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
-                    tint = homeTextSecondary.copy(alpha = 0.9f)
+                    tint = visualTokens.textSecondary
                 )
                 Text(
                     text = keyword,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = homeTextSecondary.copy(alpha = 0.88f),
+                    color = visualTokens.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -227,14 +291,15 @@ private fun HomeOverviewInlineError(
     message: String,
     onRetry: () -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Surface(
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.standardCardCornerRadius),
-        color = homeMutedCardColor,
+        color = visualTokens.surfaceMuted,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border = BorderStroke(
             width = 1.dp,
-            color = homeDividerColor.copy(alpha = 0.72f)
+            color = visualTokens.dividerSubtle
         )
     ) {
         Row(
@@ -263,14 +328,15 @@ private fun HomeOverviewStatusCard(
     subtitle: String,
     actionContent: @Composable (() -> Unit)? = null
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Surface(
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.standardCardCornerRadius),
-        color = homeCardColor,
+        color = visualTokens.surfacePrimary,
         tonalElevation = 0.dp,
         shadowElevation = 1.dp,
         border = BorderStroke(
             width = 1.dp,
-            color = homeDividerColor.copy(alpha = 0.72f)
+            color = visualTokens.dividerSubtle
         )
     ) {
         Column(
@@ -301,75 +367,126 @@ private fun HomeDiscoverySection(
     section: HomeSectionUiModel,
     onAction: (HomeAction) -> Unit
 ) {
+    val usesSongLayout = section.usesSongCardLayout()
+    val usesEditorialLayout = section.usesEditorialCarousel()
+    val displayTitle = when {
+        usesEditorialLayout -> "今日推荐"
+        else -> section.title
+    }
+    val playAllAction = if (usesSongLayout) {
+        (section.items.firstOrNull()?.action as? HomeAction.ReplaceQueueAndOpenPlayer)
+            ?.copy(activeIndex = 0)
+    } else {
+        null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("home_section_${section.code}"),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        if (section.title.isNotBlank()) {
-            HomeSectionTitle(title = section.title)
+        if (displayTitle.isNotBlank()) {
+            HomeSectionTitle(
+                title = displayTitle,
+                trailingLabel = if (playAllAction != null) "播放全部" else null,
+                onTrailingClick = playAllAction?.let { action ->
+                    { onAction(action) }
+                }
+            )
         }
 
-        if (HomeDiscoveryLayoutSpec.usesCarousel(section.layout)) {
+        if (usesEditorialLayout) {
             HomeBannerCarousel(
                 items = section.items,
                 onItemClick = onAction
             )
-        } else {
+        } else if (usesSongLayout) {
             val songColumns = if (section.usesSongCardLayout()) {
                 section.items.chunked(HomeDiscoveryLayoutSpec.songColumnItemCount)
             } else {
                 emptyList()
             }
-            if (section.usesSongCardLayout()) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
+            val pagerState = rememberPagerState(pageCount = { songColumns.size })
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("home_song_pager"),
                     contentPadding = HomeDiscoveryLayoutSpec.songSectionContentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.songCardSpacing)
-                ) {
-                    itemsIndexed(
-                        items = songColumns,
-                        key = { columnIndex, items ->
-                            items.firstOrNull()?.id ?: "home-song-column-$columnIndex"
-                        }
-                    ) { columnIndex, items ->
-                        HomeSongColumn(
-                            columnIndex = columnIndex,
-                            items = items,
-                            onAction = onAction
+                    pageSpacing = HomeDiscoveryLayoutSpec.itemSpacing
+                ) { columnIndex ->
+                    val items = songColumns[columnIndex]
+                    HomeSongColumn(
+                        columnIndex = columnIndex,
+                        startIndex = columnIndex * HomeDiscoveryLayoutSpec.songColumnItemCount,
+                        items = items,
+                        onAction = onAction
+                    )
+                }
+                if (songColumns.size > 1) {
+                    HomePagerIndicator(
+                        pageCount = songColumns.size,
+                        selectedPage = pagerState.currentPage
+                    )
+                }
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = HomeDiscoveryLayoutSpec.rowContentPadding,
+                horizontalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.itemSpacing)
+            ) {
+                items(
+                    items = section.items,
+                    key = { item -> item.id }
+                ) { item ->
+                    when (section.layout) {
+                        HomeSectionLayout.ICON_GRID -> CompactSectionCard(
+                            item = item,
+                            onClick = { onAction(item.action) }
+                        )
+
+                        else -> DiscoverySectionCard(
+                            item = item,
+                            onClick = { onAction(item.action) }
                         )
                     }
                 }
-            } else {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = HomeDiscoveryLayoutSpec.rowContentPadding,
-                    horizontalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.itemSpacing)
-                ) {
-                    items(
-                        items = section.items,
-                        key = { item -> item.id }
-                    ) { item ->
-                        when {
-                            section.layout == HomeSectionLayout.BANNER -> BannerSectionCard(
-                                item = item,
-                                onClick = { onAction(item.action) }
-                            )
-
-                            section.layout == HomeSectionLayout.ICON_GRID -> CompactSectionCard(
-                                item = item,
-                                onClick = { onAction(item.action) }
-                            )
-
-                            else -> DiscoverySectionCard(
-                                item = item,
-                                onClick = { onAction(item.action) }
-                            )
-                        }
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomePagerIndicator(
+    pageCount: Int,
+    selectedPage: Int
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(pageCount) { index ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 3.dp)
+                    .size(
+                        width = if (selectedPage == index) 14.dp else 4.dp,
+                        height = 4.dp
+                    )
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (selectedPage == index) {
+                            visualTokens.accentStrong
+                        } else {
+                            visualTokens.dividerSubtle
+                        }
+                    )
+            )
         }
     }
 }
@@ -380,6 +497,9 @@ private fun HomeBannerCarousel(
     onItemClick: (HomeAction) -> Unit
 ) {
     val actualCount = items.size
+    if (actualCount == 0) {
+        return
+    }
     val pageCount = if (actualCount > 1 && HomeDiscoveryLayoutSpec.bannerUsesInfiniteLoop) {
         HomeDiscoveryLayoutSpec.virtualBannerPageCount
     } else {
@@ -405,48 +525,20 @@ private fun HomeBannerCarousel(
                 }
             }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(HomeDiscoveryLayoutSpec.bannerHeight),
-            contentPadding = HomeDiscoveryLayoutSpec.bannerContentPadding,
-            pageSpacing = HomeDiscoveryLayoutSpec.itemSpacing
-        ) { page ->
-            val itemIndex = if (actualCount == 0) 0 else page % actualCount
-            BannerSectionCard(
-                item = items[itemIndex],
-                onClick = { onItemClick(items[itemIndex].action) },
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        if (actualCount > 1) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                val selectedIndex = pagerState.currentPage % actualCount
-                repeat(actualCount) { index ->
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(
-                                width = if (selectedIndex == index) 14.dp else 4.dp,
-                                height = 4.dp
-                            )
-                            .clip(RoundedCornerShape(50))
-                            .background(
-                                if (selectedIndex == index) {
-                                    homeAccentColor
-                                } else {
-                                    homeDividerColor
-                                }
-                            )
-                    )
-                }
-            }
-        }
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(HomeDiscoveryLayoutSpec.bannerHeight),
+        contentPadding = HomeDiscoveryLayoutSpec.bannerContentPadding,
+        pageSpacing = HomeDiscoveryLayoutSpec.itemSpacing
+    ) { page ->
+        val itemIndex = page % actualCount
+        BannerSectionCard(
+            item = items[itemIndex],
+            onClick = { onItemClick(items[itemIndex].action) },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -456,25 +548,39 @@ private fun BannerSectionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Surface(
         onClick = onClick,
         modifier = modifier.testTag("home_banner_card_${item.id}"),
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.bannerCardCornerRadius),
-        color = homeCardColor,
+        color = visualTokens.surfaceMuted,
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = homeDividerColor.copy(alpha = 0.72f)
-        )
+        shadowElevation = 0.dp,
+        border = null
     ) {
         Box {
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = item.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(visualTokens.surfaceMuted),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Album,
+                        contentDescription = null,
+                        tint = visualTokens.accentStrong.copy(alpha = 0.72f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -482,17 +588,17 @@ private fun BannerSectionCard(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.16f),
-                                Color.Black.copy(alpha = 0.46f)
+                                Color.Black.copy(alpha = 0.14f),
+                                Color.Black.copy(alpha = 0.62f)
                             )
                         )
                     )
             )
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(start = 18.dp, top = 18.dp, end = 74.dp, bottom = 18.dp)
                     .align(Alignment.BottomStart),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (!item.badge.isNullOrBlank() && item.badge != item.title) {
                     Text(
@@ -523,6 +629,25 @@ private fun BannerSectionCard(
                     )
                 }
             }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .size(46.dp),
+                shape = CircleShape,
+                color = visualTokens.surfacePrimary.copy(alpha = 0.96f),
+                tonalElevation = 0.dp,
+                shadowElevation = 4.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = visualTokens.accentStrong,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -532,6 +657,8 @@ private fun DiscoverySectionCard(
     item: HomeSectionItemUiModel,
     onClick: () -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    val hasArtwork = !item.imageUrl.isNullOrBlank()
     Surface(
         onClick = onClick,
         modifier = Modifier
@@ -539,45 +666,57 @@ private fun DiscoverySectionCard(
             .width(HomeDiscoveryLayoutSpec.discoveryCardWidth)
             .height(HomeDiscoveryLayoutSpec.discoveryCardHeight),
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.standardCardCornerRadius),
-        color = homeCardColor,
+        color = if (hasArtwork) visualTokens.surfaceMuted else visualTokens.surfaceHighlight,
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = homeDividerColor.copy(alpha = 0.7f)
-        )
+        shadowElevation = 1.dp,
+        border = null
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = item.title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(HomeDiscoveryLayoutSpec.discoveryCardWidth),
-                contentScale = ContentScale.Crop
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (hasArtwork) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.08f),
+                                    Color.Black.copy(alpha = 0.62f)
+                                )
+                            )
+                        )
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.LibraryMusic,
+                    contentDescription = null,
+                    tint = visualTokens.accentStrong.copy(alpha = 0.68f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(28.dp)
+                )
+            }
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = HomeDiscoveryLayoutSpec.titleMaxLines,
+                    fontWeight = FontWeight.Bold,
+                    color = if (hasArtwork) Color.White else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (item.subtitle.isNotBlank()) {
-                    Text(
-                        text = item.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f),
-                        maxLines = HomeDiscoveryLayoutSpec.subtitleMaxLines,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }
@@ -588,6 +727,7 @@ private fun CompactSectionCard(
     item: HomeSectionItemUiModel,
     onClick: () -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     val icon = resolveCompactSectionCardIcon(item)
     val isPrimary = item.title.contains("每日推荐")
     Surface(
@@ -597,12 +737,12 @@ private fun CompactSectionCard(
             .width(HomeDiscoveryLayoutSpec.compactCardWidth)
             .height(HomeDiscoveryLayoutSpec.compactCardHeight),
         shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.compactCardCornerRadius),
-        color = homeMutedCardColor,
+        color = visualTokens.surfaceMuted,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border = BorderStroke(
             width = 1.dp,
-            color = homeDividerColor.copy(alpha = 0.52f)
+            color = visualTokens.dividerSubtle
         )
     ) {
         Column(
@@ -617,7 +757,7 @@ private fun CompactSectionCard(
                     .size(HomeDiscoveryLayoutSpec.compactImageSize)
                     .testTag("home_compact_card_icon_${item.id}"),
                 shape = RoundedCornerShape(18.dp),
-                color = if (isPrimary) homeAccentColor else homeCardColor,
+                color = if (isPrimary) visualTokens.accentStrong else visualTokens.surfacePrimary,
                 tonalElevation = 0.dp,
                 shadowElevation = if (isPrimary) 6.dp else 2.dp,
                 border = if (isPrimary) {
@@ -625,7 +765,7 @@ private fun CompactSectionCard(
                 } else {
                     BorderStroke(
                         width = 1.dp,
-                        color = homeDividerColor.copy(alpha = 0.36f)
+                        color = visualTokens.dividerSubtle
                     )
                 }
             ) {
@@ -633,7 +773,7 @@ private fun CompactSectionCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isPrimary) Color.White else homeAccentColor,
+                        tint = if (isPrimary) Color.White else visualTokens.accentStrong,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -642,7 +782,7 @@ private fun CompactSectionCard(
                 text = item.title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = homeTitleColor,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = HomeDiscoveryLayoutSpec.titleMaxLines,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
@@ -654,44 +794,40 @@ private fun CompactSectionCard(
 @Composable
 private fun HomeSongColumn(
     columnIndex: Int,
+    startIndex: Int,
     items: List<HomeSectionItemUiModel>,
     onAction: (HomeAction) -> Unit
 ) {
-    val columnWidth = LocalConfiguration.current.screenWidthDp.dp * HomeDiscoveryLayoutSpec.songCardWidthFraction
-
-    Box(
+    Column(
         modifier = Modifier
-            .width(columnWidth)
+            .fillMaxWidth()
             .testTag("home_song_column_$columnIndex")
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(HomeDiscoveryLayoutSpec.songColumnItemSpacing)
-        ) {
-            items.forEachIndexed { itemIndex, item ->
-                HomeSongRow(
-                    item = item,
-                    onAction = onAction
+        val visualTokens = PlayerLiteVisualTheme.colors
+        items.forEachIndexed { itemIndex, item ->
+            HomeSongRow(
+                position = startIndex + itemIndex + 1,
+                item = item,
+                onAction = onAction
+            )
+            if (itemIndex != items.lastIndex) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = HomeDiscoveryLayoutSpec.songDividerStartPadding,
+                            end = 2.dp,
+                            top = HomeDiscoveryLayoutSpec.songDividerVerticalPadding,
+                            bottom = HomeDiscoveryLayoutSpec.songDividerVerticalPadding
+                        )
+                        .height(1.dp)
+                        .background(
+                            visualTokens.dividerSubtle.copy(
+                                alpha = HomeDiscoveryLayoutSpec.songDividerAlpha
+                            )
+                        )
+                        .testTag("home_song_divider_${columnIndex}_$itemIndex")
                 )
-                if (itemIndex != items.lastIndex) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = HomeDiscoveryLayoutSpec.songDividerStartPadding,
-                                end = 2.dp,
-                                top = HomeDiscoveryLayoutSpec.songDividerVerticalPadding,
-                                bottom = HomeDiscoveryLayoutSpec.songDividerVerticalPadding
-                            )
-                            .height(1.dp)
-                            .background(
-                                homeDividerColor.copy(
-                                    alpha = HomeDiscoveryLayoutSpec.songDividerAlpha
-                                )
-                            )
-                            .testTag("home_song_divider_${columnIndex}_$itemIndex")
-                    )
-                }
             }
         }
     }
@@ -699,9 +835,11 @@ private fun HomeSongColumn(
 
 @Composable
 private fun HomeSongRow(
+    position: Int,
     item: HomeSectionItemUiModel,
     onAction: (HomeAction) -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     val songCard = item.songCard ?: return
     var menuExpanded by remember(item.id) { mutableStateOf(false) }
 
@@ -713,14 +851,22 @@ private fun HomeSongRow(
             .clickable { onAction(item.action) }
             .padding(horizontal = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Text(
+            text = position.toString().padStart(length = 2, padChar = '0'),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = visualTokens.accentStrong,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.width(28.dp)
+        )
         Surface(
             modifier = Modifier
                 .size(HomeDiscoveryLayoutSpec.songCardCoverSize)
                 .testTag("home_song_row_cover_${item.id}"),
             shape = RoundedCornerShape(HomeDiscoveryLayoutSpec.songCardCoverCornerRadius),
-            color = homeMutedCardColor
+            color = visualTokens.surfaceMuted
         ) {
             if (!item.imageUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -734,7 +880,7 @@ private fun HomeSongRow(
                     Icon(
                         imageVector = Icons.Rounded.Album,
                         contentDescription = null,
-                        tint = homeAccentColor
+                        tint = visualTokens.accentStrong
                     )
                 }
             }
@@ -745,61 +891,58 @@ private fun HomeSongRow(
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = songCard.metadataLine,
-                style = MaterialTheme.typography.bodyMedium,
-                color = homeTextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = songCard.recommendReason.orEmpty(),
-                style = MaterialTheme.typography.labelMedium,
-                color = homeAccentColor.copy(alpha = 0.9f),
+                style = MaterialTheme.typography.bodySmall,
+                color = visualTokens.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Column(
-            modifier = Modifier.width(26.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Center
+        Text(
+            text = formatSongDuration(songCard.durationMs),
+            style = MaterialTheme.typography.bodyMedium,
+            color = visualTokens.textSecondary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(42.dp)
+        )
+        Box(
+            modifier = Modifier.width(HomeDiscoveryLayoutSpec.songCardMenuButtonSize),
+            contentAlignment = Alignment.Center
         ) {
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier
-                        .size(HomeDiscoveryLayoutSpec.songCardMenuButtonSize)
-                        .testTag("home_song_row_more_${item.id}"),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = homeTextSecondary
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier
+                    .size(HomeDiscoveryLayoutSpec.songCardMenuButtonSize)
+                    .testTag("home_song_row_more_${item.id}"),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = visualTokens.textSecondary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "更多操作",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                songCard.menuActions.forEach { action ->
+                    DropdownMenuItem(
+                        text = { Text(action.label) },
+                        onClick = {
+                            menuExpanded = false
+                            onAction(action.action)
+                        }
                     )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreHoriz,
-                        contentDescription = "更多操作",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    songCard.menuActions.forEach { action ->
-                        DropdownMenuItem(
-                            text = { Text(action.label) },
-                            onClick = {
-                                menuExpanded = false
-                                onAction(action.action)
-                            }
-                        )
-                    }
                 }
             }
         }
@@ -813,19 +956,72 @@ private fun HomeSectionUiModel.usesSongCardLayout(): Boolean {
     return items.all { it.songCard != null }
 }
 
+private fun HomeSectionUiModel.usesEditorialCarousel(): Boolean {
+    return HomeDiscoveryLayoutSpec.usesCarousel(layout) ||
+        code.contains("PLAYLIST_RCMD", ignoreCase = true) ||
+        title == "推荐歌单"
+}
+
 @Composable
-private fun HomeSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        fontSize = HomeDiscoveryLayoutSpec.sectionTitleFontSize,
-        lineHeight = HomeDiscoveryLayoutSpec.sectionTitleLineHeight,
-        fontWeight = FontWeight.Bold,
-        color = homeTitleColor,
-        maxLines = HomeDiscoveryLayoutSpec.sectionTitleMaxLines,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.testTag("home_section_title")
-    )
+private fun HomeSectionTitle(
+    title: String,
+    trailingLabel: String? = null,
+    onTrailingClick: (() -> Unit)? = null
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontSize = HomeDiscoveryLayoutSpec.sectionTitleFontSize,
+            lineHeight = HomeDiscoveryLayoutSpec.sectionTitleLineHeight,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = HomeDiscoveryLayoutSpec.sectionTitleMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .testTag("home_section_title")
+        )
+        if (trailingLabel != null && onTrailingClick != null) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onTrailingClick)
+                    .padding(horizontal = 6.dp, vertical = 5.dp)
+                    .testTag("home_song_play_all"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = visualTokens.accentStrong,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = trailingLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = visualTokens.accentStrong,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+private fun formatSongDuration(durationMs: Long): String {
+    if (durationMs <= 0L) {
+        return "--:--"
+    }
+    val totalSeconds = durationMs / 1_000L
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "$minutes:${seconds.toString().padStart(length = 2, padChar = '0')}"
 }
 
 private fun resolveCompactSectionCardIcon(
@@ -840,20 +1036,3 @@ private fun resolveCompactSectionCardIcon(
         else -> Icons.Rounded.Album
     }
 }
-
-private val homeOverviewBackgroundBrush = Brush.verticalGradient(
-    colors = listOf(
-        Color(0xFFFCFCFE),
-        Color(0xFFF7F7FA),
-        Color(0xFFF4F4F8)
-    )
-)
-
-private val homeCardColor = Color(0xFFFFFFFF)
-private val homeMutedCardColor = Color(0xFFF7F7FA)
-private val homeSearchSurfaceColor = Color(0xFFF5F4F6)
-private val homeBrandColor = Color(0xFFDA2C21)
-private val homeTitleColor = Color(0xFF171312)
-private val homeAccentColor = homeBrandColor
-private val homeDividerColor = Color(0xFFE9E5E1)
-private val homeTextSecondary = Color(0xFF7C726C)

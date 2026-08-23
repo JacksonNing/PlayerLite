@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -107,7 +106,6 @@ import com.wxy.playerlite.feature.player.ui.SharedMiniPlayerBarTestTags
 import com.wxy.playerlite.feature.player.ui.SharedMiniPlayerOpenPlayerClickTarget
 import com.wxy.playerlite.feature.player.ui.resolveSharedMiniPlayerBarState
 import com.wxy.playerlite.feature.player.ui.components.PlaylistBottomSheet
-import com.wxy.playerlite.feature.user.AccountCardSurface
 import com.wxy.playerlite.feature.user.AccountPrimaryButton
 import com.wxy.playerlite.feature.user.AccountVisualStyle
 import com.wxy.playerlite.feature.user.model.UserSessionUiState
@@ -168,6 +166,13 @@ internal fun MainBottomBar(
                     label = "首页",
                     accentColor = visualTokens.accentStrong,
                     unselectedContentColor = visualTokens.textSecondary
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(28.dp)
+                        .background(visualTokens.dividerSubtle)
+                        .testTag("main_bottom_bar_divider")
                 )
                 HomeBottomBarItem(
                     modifier = Modifier
@@ -436,31 +441,49 @@ internal fun UserCenterScreen(
             verticalArrangement = Arrangement.spacedBy(0.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                UserCenterProfileHeader(
-                    userState = userState,
-                    onOpenSettings = onOpenSettings,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-
-            item {
-                UserCenterQuickEntryRow(
-                    onOpenLiked = { onOpenLikedSongs(contentState.likedPlaylistId) },
-                    onOpenRecent = onOpenRecentSongs,
-                    onOpenLocal = onOpenLocalSongs,
-                    onOpenImport = onOpenPlaylistImport,
-                    modifier = Modifier.padding(bottom = if (userState.isLoggedIn) 22.dp else 16.dp)
-                )
-            }
-
             if (userState.isLoggedIn) {
+                item {
+                    UserCenterProfileHeader(
+                        userState = userState,
+                        onOpenSettings = onOpenSettings,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+
+                item {
+                    UserCenterQuickEntryRow(
+                        onOpenLiked = { onOpenLikedSongs(contentState.likedPlaylistId) },
+                        onOpenRecent = onOpenRecentSongs,
+                        onOpenLocal = onOpenLocalSongs,
+                        onOpenImport = onOpenPlaylistImport,
+                        modifier = Modifier.padding(bottom = 22.dp)
+                    )
+                }
+
                 userCenterLoggedInItems(
                     contentState = contentState,
                     onRetryPlaylists = onRetryPlaylists,
                     onContentClick = onContentClick
                 )
             } else {
+                item {
+                    UserCenterLoggedOutHeader(
+                        userState = userState,
+                        onOpenSettings = onOpenSettings,
+                        modifier = Modifier.padding(bottom = 28.dp)
+                    )
+                }
+
+                item {
+                    UserCenterLoggedOutLibrary(
+                        onOpenLiked = { onOpenLikedSongs(contentState.likedPlaylistId) },
+                        onOpenRecent = onOpenRecentSongs,
+                        onOpenLocal = onOpenLocalSongs,
+                        onOpenImport = onOpenPlaylistImport,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                }
+
                 userCenterLoggedOutItems(
                     onLoginClick = onLoginClick
                 )
@@ -568,6 +591,7 @@ private fun UserCenterQuickEntry(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
+    highlighted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -578,19 +602,109 @@ private fun UserCenterQuickEntry(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = AccountVisualStyle.accentColor,
-            modifier = Modifier.size(24.dp)
-        )
+        if (highlighted) {
+            Surface(
+                modifier = Modifier.size(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = AccountVisualStyle.accentSoftColor,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = AccountVisualStyle.accentColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+            }
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = AccountVisualStyle.accentColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(7.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = if (highlighted) {
+                MaterialTheme.typography.labelMedium
+            } else {
+                MaterialTheme.typography.labelSmall
+            },
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun UserCenterLoggedOutLibrary(
+    onOpenLiked: () -> Unit,
+    onOpenRecent: () -> Unit,
+    onOpenLocal: () -> Unit,
+    onOpenImport: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("user_center_quick_entries")
+    ) {
+        Text(
+            text = "音乐库",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.testTag("user_center_library_heading")
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.Favorite,
+                label = "喜欢",
+                onClick = onOpenLiked,
+                highlighted = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_liked")
+            )
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.History,
+                label = "最近",
+                onClick = onOpenRecent,
+                highlighted = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_recent")
+            )
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.DownloadForOffline,
+                label = "本地",
+                onClick = onOpenLocal,
+                highlighted = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_local")
+            )
+            UserCenterQuickEntry(
+                icon = Icons.Rounded.FileDownload,
+                label = "导入",
+                onClick = onOpenImport,
+                highlighted = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("user_center_quick_entry_import")
+            )
+        }
     }
 }
 
@@ -692,46 +806,63 @@ private fun LazyListScope.userCenterLoggedOutItems(
     onLoginClick: () -> Unit
 ) {
     item {
-        AccountCardSurface(
+        val visualTokens = PlayerLiteVisualTheme.colors
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 14.dp)
-                .testTag("user_center_info_card")
+                .testTag("user_center_info_card"),
+            shape = RoundedCornerShape(14.dp),
+            color = visualTokens.surfacePrimary,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(
+                width = 1.dp,
+                color = visualTokens.dividerSubtle
+            )
         ) {
-            Text(
-                text = "当前为游客浏览模式",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "登录后可同步在线身份、推荐上下文以及后续扩展的个人中心能力。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "登录后可查看自己的歌单、最近播放等个人内容。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.testTag("user_center_future_hint")
-            )
-        }
-    }
-
-    item {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("user_center_primary_action")
-        ) {
-            AccountPrimaryButton(
-                text = "去登录",
-                onClick = onLoginClick,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("user_center_login_button")
-            )
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = AccountVisualStyle.accentSoftColor,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.LibraryMusic,
+                            contentDescription = null,
+                            tint = AccountVisualStyle.accentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "登录后同步在线收藏与自建歌单",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = visualTokens.textSecondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("user_center_future_hint")
+                )
+                Box(
+                    modifier = Modifier.testTag("user_center_primary_action")
+                ) {
+                    AccountPrimaryButton(
+                        text = "去登录",
+                        onClick = onLoginClick,
+                        modifier = Modifier
+                            .width(104.dp)
+                            .testTag("user_center_login_button")
+                    )
+                }
+            }
         }
     }
 }
@@ -891,6 +1022,103 @@ private fun UserCenterCollectionCard(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserCenterLoggedOutHeader(
+    userState: UserSessionUiState,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("user_center_profile_header"),
+        verticalArrangement = Arrangement.spacedBy(22.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "我的",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.testTag("user_center_page_title")
+            )
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = visualTokens.surfaceHighlight,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                IconButton(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("user_center_settings_entry"),
+                    onClick = onOpenSettings
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "设置",
+                        tint = visualTokens.textSecondary
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier
+                    .size(58.dp)
+                    .testTag("user_center_avatar"),
+                shape = CircleShape,
+                color = AccountVisualStyle.accentSoftColor,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountCircle,
+                        contentDescription = null,
+                        tint = AccountVisualStyle.accentColor,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = userState.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("user_center_title")
+                )
+                Text(
+                    text = userState.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = visualTokens.textSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("user_center_summary")
                 )
             }
         }

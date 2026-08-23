@@ -17,20 +17,20 @@ class HomeDiscoveryLayoutSpecTest {
     @Test
     fun horizontalSections_shouldUseTighterEdgePaddingForDenserViewport() {
         assertEquals(
-            4.dp,
+            0.dp,
             HomeDiscoveryLayoutSpec.rowContentPadding.calculateLeftPadding(LayoutDirection.Ltr)
         )
         assertEquals(
-            4.dp,
+            0.dp,
             HomeDiscoveryLayoutSpec.rowContentPadding.calculateRightPadding(LayoutDirection.Ltr)
         )
     }
 
     @Test
     fun cards_shouldUseFixedHeightsToAvoidViewportJitter() {
-        assertEquals(206.dp, HomeDiscoveryLayoutSpec.bannerHeight)
-        assertEquals(222.dp, HomeDiscoveryLayoutSpec.discoveryCardHeight)
-        assertEquals(116.dp, HomeDiscoveryLayoutSpec.compactCardHeight)
+        assertEquals(190.dp, HomeDiscoveryLayoutSpec.bannerHeight)
+        assertEquals(112.dp, HomeDiscoveryLayoutSpec.discoveryCardHeight)
+        assertEquals(104.dp, HomeDiscoveryLayoutSpec.compactCardHeight)
         assertEquals(72.dp, HomeDiscoveryLayoutSpec.songCardHeight)
     }
 
@@ -53,10 +53,10 @@ class HomeDiscoveryLayoutSpecTest {
     }
 
     @Test
-    fun bannerCarousel_shouldUseSmallerSidePaddingThanRegularRows() {
+    fun bannerCarousel_shouldExposeTheNextEditorialCard() {
         assertTrue(
-            HomeDiscoveryLayoutSpec.bannerContentPadding.calculateLeftPadding(LayoutDirection.Ltr) <
-                HomeDiscoveryLayoutSpec.rowContentPadding.calculateLeftPadding(LayoutDirection.Ltr)
+            HomeDiscoveryLayoutSpec.bannerContentPadding.calculateRightPadding(LayoutDirection.Ltr) >
+                HomeDiscoveryLayoutSpec.rowContentPadding.calculateRightPadding(LayoutDirection.Ltr)
         )
     }
 
@@ -74,7 +74,7 @@ class HomeDiscoveryLayoutSpecTest {
     @Test
     fun dailyShortcutCards_shouldUseCompactIconLeadingStyle() {
         assertTrue(HomeDiscoveryLayoutSpec.dailyShortcutUsesCompactIconStyle)
-        assertEquals(116.dp, HomeDiscoveryLayoutSpec.compactCardHeight)
+        assertEquals(104.dp, HomeDiscoveryLayoutSpec.compactCardHeight)
     }
 
     @Test
@@ -93,39 +93,35 @@ class HomeDiscoveryLayoutSpecTest {
     }
 
     @Test
-    fun songCards_shouldUseStableWidthFractionAndSpacing() {
-        assertEquals(0.7f, HomeDiscoveryLayoutSpec.songCardWidthFraction)
-        assertEquals(18.dp, HomeDiscoveryLayoutSpec.songCardSpacing)
+    fun songPages_shouldUseThreeFullWidthRows() {
         assertEquals(3, HomeDiscoveryLayoutSpec.songColumnItemCount)
-        assertEquals(0.dp, HomeDiscoveryLayoutSpec.songColumnItemSpacing)
-        assertEquals(0.dp, HomeDiscoveryLayoutSpec.songSectionCornerRadius)
+        assertEquals(2.dp, HomeDiscoveryLayoutSpec.songColumnItemSpacing)
     }
 
     @Test
     fun homepageCards_shouldUseTighterCornerHierarchy() {
         assertEquals(18.dp, HomeDiscoveryLayoutSpec.bannerCardCornerRadius)
-        assertEquals(16.dp, HomeDiscoveryLayoutSpec.standardCardCornerRadius)
-        assertEquals(22.dp, HomeDiscoveryLayoutSpec.compactCardCornerRadius)
-        assertEquals(10.dp, HomeDiscoveryLayoutSpec.songCardCornerRadius)
+        assertEquals(14.dp, HomeDiscoveryLayoutSpec.standardCardCornerRadius)
+        assertEquals(18.dp, HomeDiscoveryLayoutSpec.compactCardCornerRadius)
     }
 
     @Test
     fun songCards_shouldReserveArtworkAndOverflowActionSpace() {
-        assertEquals(52.dp, HomeDiscoveryLayoutSpec.songCardCoverSize)
+        assertEquals(48.dp, HomeDiscoveryLayoutSpec.songCardCoverSize)
         assertEquals(12.dp, HomeDiscoveryLayoutSpec.songCardCoverCornerRadius)
-        assertEquals(24.dp, HomeDiscoveryLayoutSpec.songCardMenuButtonSize)
+        assertEquals(36.dp, HomeDiscoveryLayoutSpec.songCardMenuButtonSize)
     }
 
     @Test
     fun songRows_shouldUseCompactVisibleDividers() {
-        assertEquals(66.dp, HomeDiscoveryLayoutSpec.songDividerStartPadding)
-        assertEquals(4.dp, HomeDiscoveryLayoutSpec.songDividerVerticalPadding)
-        assertEquals(0.78f, HomeDiscoveryLayoutSpec.songDividerAlpha)
+        assertEquals(112.dp, HomeDiscoveryLayoutSpec.songDividerStartPadding)
+        assertEquals(0.dp, HomeDiscoveryLayoutSpec.songDividerVerticalPadding)
+        assertEquals(0.46f, HomeDiscoveryLayoutSpec.songDividerAlpha)
     }
 
     @Test
     fun homeSearchBox_shouldUseCalmerChrome() {
-        assertEquals(16.dp, HomeDiscoveryLayoutSpec.searchBoxCornerRadius)
+        assertEquals(18.dp, HomeDiscoveryLayoutSpec.searchBoxCornerRadius)
         assertEquals(0.dp, HomeDiscoveryLayoutSpec.searchBoxShadowElevation)
     }
 
