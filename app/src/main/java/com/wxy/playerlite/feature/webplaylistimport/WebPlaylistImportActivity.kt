@@ -9,15 +9,19 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -31,14 +35,13 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -51,8 +54,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.detail.createOpenPlayerAfterQueueReplacementIntent
 import com.wxy.playerlite.feature.user.LoginActivity
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
@@ -195,55 +200,47 @@ private fun WebPlaylistImportInputContent(
             .fillMaxSize()
             .padding(innerPadding)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            text = "粘贴网页歌单链接",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "当前支持网易云歌单和 QQ 音乐歌单。第一版会先读取歌单信息，再进入导入预览。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = state.inputUrl,
+            onValueChange = onUrlChanged,
+            label = { Text("歌单网页地址") },
+            placeholder = { Text("https://music.163.com/#/playlist?id=...") },
+            supportingText = {
+                state.inputErrorMessage?.let { Text(text = it) }
+            },
+            isError = state.inputErrorMessage != null,
+            minLines = 3,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("web_playlist_import_url_field")
+        )
+        Button(
+            onClick = onSubmit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .testTag("web_playlist_import_submit")
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "粘贴网页歌单链接",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "当前支持网易云歌单和 QQ 音乐歌单。第一版会先读取歌单信息，再进入导入预览。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = state.inputUrl,
-                    onValueChange = onUrlChanged,
-                    label = { Text("歌单网页地址") },
-                    placeholder = { Text("https://music.163.com/#/playlist?id=...") },
-                    supportingText = {
-                        state.inputErrorMessage?.let { Text(text = it) }
-                    },
-                    isError = state.inputErrorMessage != null,
-                    minLines = 3,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("web_playlist_import_url_field")
-                )
-                Button(
-                    onClick = onSubmit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("web_playlist_import_submit")
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Link,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("开始解析")
-                }
-            }
+            Icon(
+                imageVector = Icons.Rounded.Link,
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("开始解析")
         }
     }
 }
@@ -260,33 +257,32 @@ private fun WebPlaylistImportLoginRequiredContent(
             .testTag("web_playlist_import_login_required"),
         contentAlignment = Alignment.Center
     ) {
-        ElevatedCard(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
+                .wrapContentHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Text(
+                text = "导入前需要登录",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "当前导入流程需要在线搜索和播放能力，先完成登录后再继续。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Button(
+                onClick = onOpenLogin,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .testTag("web_playlist_import_login_button")
             ) {
-                Text(
-                    text = "导入前需要登录",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "当前导入流程需要在线搜索和播放能力，先完成登录后再继续。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Button(
-                    onClick = onOpenLogin,
-                    modifier = Modifier.testTag("web_playlist_import_login_button")
-                ) {
-                    Text("去登录")
-                }
+                Text("去登录")
             }
         }
     }
@@ -332,16 +328,27 @@ private fun WebPlaylistImportPreviewContent(
             .fillMaxSize()
             .padding(innerPadding)
             .testTag("web_playlist_import_preview"),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ImportPreviewCover(
+                    coverUrl = snapshot.coverUrl,
+                    size = 96.dp,
+                    cornerRadius = 20.dp,
+                    tag = "web_playlist_import_preview_cover"
+                )
                 Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    ImportPreviewCover(coverUrl = snapshot.coverUrl)
                     Text(
                         text = snapshot.title,
                         style = MaterialTheme.typography.titleLarge,
@@ -365,7 +372,10 @@ private fun WebPlaylistImportPreviewContent(
         }
         item {
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 ImportSummaryRow(
                     tag = "web_playlist_import_summary_total",
@@ -382,7 +392,10 @@ private fun WebPlaylistImportPreviewContent(
                         text = matchingProgress.pauseMessage ?: "匹配已暂停，请稍后重试",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.testTag("web_playlist_import_paused_notice")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .testTag("web_playlist_import_paused_notice")
                     )
                 }
                 ImportSummaryRow(
@@ -410,6 +423,8 @@ private fun WebPlaylistImportPreviewContent(
                     enabled = importableCount > 0 && !isImporting,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .padding(top = 16.dp)
                         .testTag("web_playlist_import_confirm")
                 ) {
                     Text(
@@ -427,7 +442,9 @@ private fun WebPlaylistImportPreviewContent(
                         text = "当前仅会导入 direct 与 matched 条目",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag("web_playlist_import_confirm_disabled_reason")
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .testTag("web_playlist_import_confirm_disabled_reason")
                     )
                 }
             }
@@ -436,37 +453,53 @@ private fun WebPlaylistImportPreviewContent(
             items = snapshot.tracks,
             key = { index, item -> item.sourceTrackId ?: "${item.title}-$index" }
         ) { index, track ->
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                tonalElevation = 1.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 68.dp),
+                        thickness = 0.5.dp,
+                        color = PlayerLiteVisualTheme.colors.dividerSubtle
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${index + 1}. ${track.title}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                    ImportPreviewCover(
+                        coverUrl = track.coverUrl,
+                        size = 56.dp,
+                        cornerRadius = 12.dp
                     )
-                    Text(
-                        text = track.artistText.ifBlank { "未知歌手" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (track.albumTitle.isNotBlank()) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
                         Text(
-                            text = track.albumTitle,
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "${index + 1}. ${track.title}",
+                            style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = track.artistText.ifBlank { "未知歌手" },
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (track.albumTitle.isNotBlank()) {
+                            Text(
+                                text = track.albumTitle,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = track.resolution.asLabel(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                    Text(
-                        text = track.resolution.asLabel(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
                 }
             }
         }
@@ -475,15 +508,18 @@ private fun WebPlaylistImportPreviewContent(
 
 @Composable
 private fun ImportPreviewCover(
-    coverUrl: String?
+    coverUrl: String?,
+    size: androidx.compose.ui.unit.Dp,
+    cornerRadius: androidx.compose.ui.unit.Dp,
+    tag: String? = null
 ) {
-    Surface(
+    Box(
         modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .testTag("web_playlist_import_preview_cover"),
-        shape = RoundedCornerShape(20.dp),
-        tonalElevation = 1.dp
+            .size(size)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier),
+        contentAlignment = Alignment.Center
     ) {
         if (!coverUrl.isNullOrBlank()) {
             AsyncImage(
@@ -492,16 +528,11 @@ private fun ImportPreviewCover(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.MusicNote,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Icon(
+                imageVector = Icons.Rounded.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -512,29 +543,30 @@ private fun ImportSummaryRow(
     label: String,
     value: String
 ) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 1.dp,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(tag)
     ) {
-        Box(
+        if (tag != "web_playlist_import_summary_total") {
+            HorizontalDivider()
+        }
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.CenterStart)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.CenterEnd)
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -554,33 +586,32 @@ private fun WebPlaylistImportErrorContent(
             .testTag("web_playlist_import_error"),
         contentAlignment = Alignment.Center
     ) {
-        ElevatedCard(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
+                .wrapContentHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onRetry,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .testTag("web_playlist_import_retry")
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Button(
-                    onClick = onRetry,
-                    modifier = Modifier.testTag("web_playlist_import_retry")
-                ) {
-                    Text("重试")
-                }
+                Text("重试")
             }
         }
     }

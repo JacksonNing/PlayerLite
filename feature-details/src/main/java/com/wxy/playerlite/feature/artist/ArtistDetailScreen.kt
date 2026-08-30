@@ -6,6 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,6 +72,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -194,12 +198,24 @@ fun ArtistDetailScreen(
                 onBack = onBack,
                 listState = bodyListState,
                 bottomOverlayPadding = bottomOverlayPadding,
-                scaffoldBackButtonTint = topBarContentColor,
+                showScaffoldBackButton = false,
+                scaffoldBackButtonTint = Color.Transparent,
+                overlayContent = {
+                    ArtistDetailCollapsingTopBar(
+                        artistName = "",
+                        accentColor = heroAccentColor,
+                        topBarContentColor = topBarContentColor,
+                        collapseProgress = animatedCollapseProgress,
+                        stickyHeaderInsetProgress = stickyHeaderInsetProgress,
+                        compactTopBarHeight = compactTopBarHeight,
+                        onBack = onBack
+                    )
+                },
                 heroContent = {
                     ArtistDetailHeroSkeleton()
                 }
             ) {
-                item {
+                artistDetailFallbackBodyContent {
                     DetailLoadingCard(text = "歌手详情加载中")
                 }
             }
@@ -210,12 +226,24 @@ fun ArtistDetailScreen(
                 onBack = onBack,
                 listState = bodyListState,
                 bottomOverlayPadding = bottomOverlayPadding,
-                scaffoldBackButtonTint = topBarContentColor,
+                showScaffoldBackButton = false,
+                scaffoldBackButtonTint = Color.Transparent,
+                overlayContent = {
+                    ArtistDetailCollapsingTopBar(
+                        artistName = "",
+                        accentColor = heroAccentColor,
+                        topBarContentColor = topBarContentColor,
+                        collapseProgress = animatedCollapseProgress,
+                        stickyHeaderInsetProgress = stickyHeaderInsetProgress,
+                        compactTopBarHeight = compactTopBarHeight,
+                        onBack = onBack
+                    )
+                },
                 heroContent = {
                     ArtistDetailHeroSkeleton()
                 }
             ) {
-                item {
+                artistDetailFallbackBodyContent {
                     DetailErrorCard(
                         message = headerState.message,
                         onRetry = onRetry,
@@ -300,6 +328,21 @@ fun ArtistDetailScreen(
                     }
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyListScope.artistDetailFallbackBodyContent(
+    content: @Composable () -> Unit
+) {
+    item {
+        Box(
+            modifier = Modifier
+                .fillParentMaxHeight()
+                .padding(vertical = 12.dp)
+        ) {
+            content()
         }
     }
 }
@@ -687,16 +730,24 @@ private fun ArtistDetailHero(
                 ) {
                     Text("播放最热门")
                 }
-                Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
+                Card(
                     shape = RoundedCornerShape(999.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f)
+                    ),
                     modifier = Modifier.testTag("artist_hero_follow_button")
                 ) {
-                    Text(followButtonLabel)
+                    Box(
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = followButtonLabel,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -779,7 +830,8 @@ private fun ArtistDetailStickyTabsHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 ArtistDetailTab.entries.forEach { tab ->
@@ -787,9 +839,15 @@ private fun ArtistDetailStickyTabsHeader(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
-                                onTabSelected(tab)
-                            }
+                            .defaultMinSize(minHeight = 48.dp)
+                            .selectable(
+                                selected = isSelected,
+                                onClick = {
+                                    onTabSelected(tab)
+                                },
+                                role = Role.Tab
+                            )
+                            .padding(vertical = 4.dp)
                             .testTag(tab.testTag),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)

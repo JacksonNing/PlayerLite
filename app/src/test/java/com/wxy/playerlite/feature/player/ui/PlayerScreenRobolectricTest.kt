@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -1476,6 +1477,7 @@ class PlayerScreenRobolectricTest {
         composeRule.onNodeWithTag("player_more_actions_sheet_surface").assertIsDisplayed()
         composeRule.onNodeWithText("音效设置").assertIsDisplayed()
         composeRule.onNodeWithText("倍速设置").assertIsDisplayed()
+        composeRule.onNodeWithTag("player_more_actions_sheet_close_button").assertHeightIsAtLeast(48.dp)
 
         composeRule.onNodeWithTag(
             "player_more_actions_entry_playback_speed",
@@ -1483,6 +1485,7 @@ class PlayerScreenRobolectricTest {
         ).assert(hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         composeRule.waitForIdle()
         assertEquals(PlayerMoreActionsPage.SPEED, moreActionsPage)
+        composeRule.onNodeWithTag("player_more_actions_sheet_back_button").assertHeightIsAtLeast(48.dp)
         composeRule.onNodeWithTag("player_more_actions_speed_slider").assertIsDisplayed()
         composeRule.onNodeWithTag("player_more_actions_speed_value").assertTextEquals("1.0X")
         composeRule.onNodeWithTag("player_more_actions_speed_slider")
@@ -3503,6 +3506,7 @@ class PlayerScreenRobolectricTest {
         composeRule.onAllNodesWithTag("playlist_sheet_drag_handle_track-1", useUnmergedTree = true)
             .assertCountEquals(0)
         composeRule.onNodeWithTag("playlist_sheet_reorder_toggle").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("关闭播放列表").assertHeightIsAtLeast(48.dp)
     }
 
     @Test

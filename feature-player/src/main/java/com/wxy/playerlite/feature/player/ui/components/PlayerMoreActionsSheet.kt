@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -51,7 +52,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.player.model.PlayerMoreActionsPage
 import com.wxy.playerlite.player.AudioEffectPreset
@@ -72,7 +72,6 @@ internal fun PlayerMoreActionsSheet(
     modifier: Modifier = Modifier
 ) {
     val visualTokens = PlayerLiteVisualTheme.colors
-    val brandPalette = PlayerLiteThemeContract.DefaultBrandPalettes.light
     val scrimInteraction = remember { MutableInteractionSource() }
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val normalizedPlaybackSpeed = PlaybackSpeed.normalizeValue(playbackSpeed)
@@ -105,16 +104,15 @@ internal fun PlayerMoreActionsSheet(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.58f)
                     .testTag("player_more_actions_sheet_surface"),
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = brandPalette.neutral,
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = visualTokens.surfaceMuted,
                 tonalElevation = 0.dp,
-                shadowElevation = 24.dp
+                shadowElevation = 16.dp
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(
                             start = 20.dp,
                             top = 14.dp,
@@ -137,32 +135,26 @@ internal fun PlayerMoreActionsSheet(
                         onReturnToRoot = onReturnToRoot
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = true)
-                    ) {
-                        when (page) {
-                            PlayerMoreActionsPage.ROOT -> {
-                                PlayerMoreActionsRootPage(
-                                    playbackSpeed = normalizedPlaybackSpeed,
-                                    audioEffectPreset = audioEffectPreset,
-                                    onShowPlaybackSpeedSettings = onShowPlaybackSpeedSettings,
-                                    onShowAudioEffectSettings = onShowAudioEffectSettings,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-
-                            PlayerMoreActionsPage.SPEED -> {
-                                PlayerMoreActionsSpeedPage(
-                                    playbackSpeed = normalizedPlaybackSpeed,
-                                    onSelectPlaybackSpeed = onSelectPlaybackSpeed,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-
-                            PlayerMoreActionsPage.AUDIO_EFFECT -> Unit
+                    when (page) {
+                        PlayerMoreActionsPage.ROOT -> {
+                            PlayerMoreActionsRootPage(
+                                playbackSpeed = normalizedPlaybackSpeed,
+                                audioEffectPreset = audioEffectPreset,
+                                onShowPlaybackSpeedSettings = onShowPlaybackSpeedSettings,
+                                onShowAudioEffectSettings = onShowAudioEffectSettings,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
+
+                        PlayerMoreActionsPage.SPEED -> {
+                            PlayerMoreActionsSpeedPage(
+                                playbackSpeed = normalizedPlaybackSpeed,
+                                onSelectPlaybackSpeed = onSelectPlaybackSpeed,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        PlayerMoreActionsPage.AUDIO_EFFECT -> Unit
                     }
                 }
             }
@@ -182,11 +174,13 @@ private fun PlayerMoreActionsSheetHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (page == PlayerMoreActionsPage.ROOT) {
-            Box(modifier = Modifier.size(40.dp))
+            Box(modifier = Modifier.size(48.dp))
         } else {
             IconButton(
                 onClick = onReturnToRoot,
-                modifier = Modifier.testTag("player_more_actions_sheet_back_button")
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("player_more_actions_sheet_back_button")
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -195,30 +189,21 @@ private fun PlayerMoreActionsSheetHeader(
             }
         }
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = when (page) {
-                    PlayerMoreActionsPage.ROOT -> "更多操作"
-                    PlayerMoreActionsPage.SPEED -> "倍速设置"
-                    PlayerMoreActionsPage.AUDIO_EFFECT -> "更多操作"
-                },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = when (page) {
-                    PlayerMoreActionsPage.ROOT -> "播放器设置入口"
-                    PlayerMoreActionsPage.SPEED -> "当前浮层内滑动切换倍速"
-                    PlayerMoreActionsPage.AUDIO_EFFECT -> "播放器设置入口"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = when (page) {
+                PlayerMoreActionsPage.ROOT -> "更多操作"
+                PlayerMoreActionsPage.SPEED -> "倍速设置"
+                PlayerMoreActionsPage.AUDIO_EFFECT -> "更多操作"
+            },
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
 
         IconButton(
             onClick = onDismiss,
-            modifier = Modifier.testTag("player_more_actions_sheet_close_button")
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("player_more_actions_sheet_close_button")
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
@@ -236,25 +221,33 @@ private fun PlayerMoreActionsRootPage(
     onShowAudioEffectSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .testTag("player_more_actions_sheet_root"),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Surface(
+        modifier = modifier.testTag("player_more_actions_sheet_root"),
+        shape = RoundedCornerShape(16.dp),
+        color = PlayerLiteVisualTheme.colors.surfacePrimary,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
-        PlayerMoreActionsEntry(
-            title = "音效设置",
-            subtitle = "当前 ${audioEffectPreset.displayName}",
-            icon = Icons.Rounded.GraphicEq,
-            tag = "player_more_actions_entry_audio_effect",
-            onClick = onShowAudioEffectSettings
-        )
-        PlayerMoreActionsEntry(
-            title = "倍速设置",
-            subtitle = "当前 ${PlaybackSpeed.format(playbackSpeed)}",
-            icon = Icons.Rounded.Equalizer,
-            tag = "player_more_actions_entry_playback_speed",
-            onClick = onShowPlaybackSpeedSettings
-        )
+        Column {
+            PlayerMoreActionsEntry(
+                title = "音效设置",
+                subtitle = "当前 ${audioEffectPreset.displayName}",
+                icon = Icons.Rounded.GraphicEq,
+                tag = "player_more_actions_entry_audio_effect",
+                onClick = onShowAudioEffectSettings
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 70.dp, end = 16.dp),
+                color = PlayerLiteVisualTheme.colors.dividerSubtle
+            )
+            PlayerMoreActionsEntry(
+                title = "倍速设置",
+                subtitle = "当前 ${PlaybackSpeed.format(playbackSpeed)}",
+                icon = Icons.Rounded.Equalizer,
+                tag = "player_more_actions_entry_playback_speed",
+                onClick = onShowPlaybackSpeedSettings
+            )
+        }
     }
 }
 
@@ -331,51 +324,45 @@ private fun PlayerMoreActionsEntry(
     tag: String,
     onClick: () -> Unit
 ) {
-    PlayerMoreActionsCard(
-        tag = tag,
-        onClick = onClick
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag(tag),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.size(40.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = PlayerLiteVisualTheme.colors.accentStrong.copy(alpha = 0.12f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = PlayerLiteVisualTheme.colors.accentStrong
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = PlayerLiteVisualTheme.colors.accentStrong
             )
         }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -432,7 +419,7 @@ private fun PlayerMoreActionsCard(
         color = if (selected) {
             visualTokens.accentStrong.copy(alpha = 0.10f)
         } else {
-            MaterialTheme.colorScheme.surface
+            visualTokens.surfacePrimary
         },
         tonalElevation = 0.dp,
         shadowElevation = 0.dp

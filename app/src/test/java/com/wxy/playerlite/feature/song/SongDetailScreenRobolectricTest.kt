@@ -1,6 +1,7 @@
 package com.wxy.playerlite.feature.song
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import com.wxy.playerlite.core.playlist.PlaylistItemType
 import com.wxy.playerlite.feature.song.SongDetailContentState.Content
@@ -96,6 +98,7 @@ class SongDetailScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("song_detail_root").assertIsDisplayed()
+        composeRule.onNodeWithTag("detail_back_button").assertWidthIsAtLeast(48.dp)
         composeRule.onNodeWithTag("song_detail_hero_panel").assertIsDisplayed()
         composeRule.onNodeWithTag("song_detail_info_header").assertIsDisplayed()
         composeRule.onNodeWithTag("song_detail_info_cover").assertIsDisplayed()

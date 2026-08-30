@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -38,10 +39,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,9 +71,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import com.wxy.playerlite.core.playlist.PlaylistItemType
@@ -96,6 +98,8 @@ import kotlin.math.max
 
 private const val DAILY_RECOMMENDED_HERO_LIST_INDEX = 0
 private val DAILY_RECOMMENDED_COMPACT_TOP_BAR_CONTENT_HEIGHT = 56.dp
+private val DAILY_RECOMMENDED_ROW_COVER_SIZE = 56.dp
+private val DAILY_RECOMMENDED_ROW_COVER_SHAPE = RoundedCornerShape(12.dp)
 
 class DailyRecommendedSongsActivity : BasePlaybackDetailActivity() {
     private val viewModel: DailyRecommendedSongsViewModel by viewModels()
@@ -248,7 +252,7 @@ internal fun DailyRecommendedSongsScreen(
         )
     } else {
         SideEffect {
-            onHeaderChromeProgressChange?.invoke(0f)
+            onHeaderChromeProgressChange?.invoke(1f)
         }
         DailyRecommendedSongsStateScreen(
             state = state,
@@ -336,6 +340,7 @@ private fun DailyRecommendedSongsContentScreen(
             DailyRecommendedSongRow(
                 item = item,
                 order = index + 1,
+                showDivider = index < contentState.items.lastIndex,
                 onClick = { onItemClick(index) },
                 onInsertNext = { onItemInsertNext(item) },
                 onOpenDetail = { onItemOpenDetail(item) },
@@ -352,6 +357,8 @@ private fun DailyRecommendedSongsContentShell(
     listState: LazyListState,
     bottomOverlayPadding: Dp,
     heroBrush: Brush,
+    drawHeroBackground: Boolean = false,
+    heroTopPadding: Dp = 0.dp,
     overlayContent: @Composable BoxScope.() -> Unit,
     heroContent: @Composable ColumnScope.() -> Unit,
     bodyContent: LazyListScope.() -> Unit
@@ -363,9 +370,9 @@ private fun DailyRecommendedSongsContentShell(
             bottomOverlayPadding = bottomOverlayPadding,
             listState = listState,
             heroBrush = heroBrush,
-            drawHeroBackground = false,
+            drawHeroBackground = drawHeroBackground,
             heroHorizontalPadding = 0.dp,
-            heroTopPadding = 0.dp,
+            heroTopPadding = heroTopPadding,
             heroBottomPadding = 0.dp,
             drawHeroBehindStatusBar = true,
             showBackButton = false,
@@ -388,17 +395,24 @@ private fun DailyRecommendedSongsStateScreen(
 ) {
     val listState = rememberLazyListState()
     val heroImageUrl = state.heroImageUrl()
+    val compactTopBarHeight = rememberDailyRecommendedCompactTopBarHeight()
 
-    MusicDetailScaffold(
-        heroTestTag = "daily_recommended_hero_panel",
+    DailyRecommendedSongsContentShell(
         onBack = onBack,
-        bottomOverlayPadding = bottomOverlayPadding,
         listState = listState,
+        bottomOverlayPadding = bottomOverlayPadding,
         heroBrush = rememberDynamicHeroBrush(imageUrl = heroImageUrl),
-        heroTopPadding = 70.dp,
-        heroBottomPadding = 16.dp,
-        drawHeroBehindStatusBar = true,
-        backButtonTint = topBarContentColor,
+        drawHeroBackground = true,
+        heroTopPadding = compactTopBarHeight,
+        overlayContent = {
+            DailyRecommendedSongsCollapsingTopBar(
+                accentColor = MaterialTheme.colorScheme.primary,
+                topBarContentColor = topBarContentColor,
+                collapseProgress = 1f,
+                compactTopBarHeight = compactTopBarHeight,
+                onBack = onBack
+            )
+        },
         heroContent = {
             DailyRecommendedSongsStateHero(
                 state = state,
@@ -549,7 +563,7 @@ private fun DailyRecommendedTopChromeAction(
 ) {
     Box(
         modifier = modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(999.dp))
             .clickable(onClick = onClick)
             .testTag(testTag),
@@ -780,6 +794,7 @@ private fun DailyRecommendedSongsTracksSectionHeader(
 private fun DailyRecommendedSongRow(
     item: DailyRecommendedSongUiModel,
     order: Int,
+    showDivider: Boolean,
     onClick: () -> Unit,
     onInsertNext: () -> Unit,
     onOpenDetail: () -> Unit,
@@ -787,113 +802,177 @@ private fun DailyRecommendedSongRow(
     onOpenAlbum: (String) -> Unit
 ) {
     var menuExpanded by remember(item.id) { mutableStateOf(false) }
-    val metaLine = buildList {
+    val artistAlbumLine = buildList {
         if (item.artistText.isNotBlank()) {
             add(item.artistText)
         }
         item.albumTitle?.takeIf { it.isNotBlank() }?.let(::add)
-        item.recommendReason?.takeIf { it.isNotBlank() }?.let(::add)
     }.joinToString(separator = " · ")
+    val recommendReason = item.recommendReason?.takeIf { it.isNotBlank() }
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick)
-            .testTag("daily_recommended_row_${item.id}"),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .testTag("daily_recommended_row_${item.id}")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = order.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(34.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = order.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.width(34.dp)
                 )
-                metaLine.takeIf { it.isNotBlank() }?.let { subtitle ->
+                Spacer(modifier = Modifier.width(8.dp))
+                DailyRecommendedSongRowCover(
+                    coverUrl = item.coverUrl,
+                    title = item.title
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
                     Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = item.title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    artistAlbumLine.takeIf { it.isNotBlank() }?.let { subtitle ->
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    recommendReason?.let { reason ->
+                        Text(
+                            text = reason,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    if (item.durationMs > 0L) {
+                        Text(
+                            text = formatTrackDuration(item.durationMs),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .testTag("daily_recommended_row_more_${item.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = "更多操作"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("下一首播放") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onInsertNext()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("查看歌曲详情") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onOpenDetail()
+                                }
+                            )
+                            item.primaryArtistId?.takeIf { it.isNotBlank() }?.let { artistId ->
+                                DropdownMenuItem(
+                                    text = { Text("查看歌手") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onOpenArtist(artistId)
+                                    }
+                                )
+                            }
+                            item.albumId?.takeIf { it.isNotBlank() }?.let { albumId ->
+                                DropdownMenuItem(
+                                    text = { Text("查看专辑") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onOpenAlbum(albumId)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            if (item.durationMs > 0L) {
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = formatTrackDuration(item.durationMs),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (showDivider) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 130.dp, end = 20.dp),
+                    thickness = 0.5.dp,
+                    color = PlayerLiteVisualTheme.colors.dividerSubtle
                 )
             }
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.testTag("daily_recommended_row_more_${item.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "更多操作"
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("下一首播放") },
-                        onClick = {
-                            menuExpanded = false
-                            onInsertNext()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("查看歌曲详情") },
-                        onClick = {
-                            menuExpanded = false
-                            onOpenDetail()
-                        }
-                    )
-                    item.primaryArtistId?.takeIf { it.isNotBlank() }?.let { artistId ->
-                        DropdownMenuItem(
-                            text = { Text("查看歌手") },
-                            onClick = {
-                                menuExpanded = false
-                                onOpenArtist(artistId)
-                            }
-                        )
-                    }
-                    item.albumId?.takeIf { it.isNotBlank() }?.let { albumId ->
-                        DropdownMenuItem(
-                            text = { Text("查看专辑") },
-                            onClick = {
-                                menuExpanded = false
-                                onOpenAlbum(albumId)
-                            }
-                        )
-                    }
-                }
+        }
+    }
+}
+
+@Composable
+private fun DailyRecommendedSongRowCover(
+    coverUrl: String?,
+    title: String
+) {
+    Surface(
+        modifier = Modifier.size(DAILY_RECOMMENDED_ROW_COVER_SIZE),
+        shape = DAILY_RECOMMENDED_ROW_COVER_SHAPE,
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            if (coverUrl.isNullOrBlank()) {
+                Text(
+                    text = title.take(1),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
     }

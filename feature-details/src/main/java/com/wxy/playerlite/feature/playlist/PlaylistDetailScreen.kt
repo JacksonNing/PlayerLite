@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,15 +35,17 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,7 +54,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableIntStateOf
@@ -68,12 +70,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.detail.DetailBottomScrim
 import com.wxy.playerlite.feature.detail.DetailErrorCard
 import com.wxy.playerlite.feature.detail.DetailLoadingCard
@@ -82,9 +87,7 @@ import com.wxy.playerlite.feature.detail.DetailSectionPlayAllButton
 import com.wxy.playerlite.feature.detail.MusicDetailScaffold
 import com.wxy.playerlite.feature.detail.formatTrackDuration
 import com.wxy.playerlite.feature.detail.rememberDetailVerticalScrollHandoffConnection
-import com.wxy.playerlite.feature.detail.rememberDynamicHeroAccentColor
 import com.wxy.playerlite.feature.detail.rememberDynamicHeroBrush
-import com.wxy.playerlite.feature.detail.shouldUseLightStatusBarContent
 import kotlin.math.max
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -138,19 +141,39 @@ fun PlaylistDetailScreen(
 
     when (val headerState = state.headerState) {
         PlaylistHeaderUiState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            PlaylistDetailShell(
+                onBack = onBack,
+                listState = outerListState,
+                bottomOverlayPadding = bottomOverlayPadding,
+                scaffoldBackButtonTint = topBarContentColor,
+                heroContent = {
+                    PlaylistDetailHeroSkeleton()
+                }
             ) {
-                CircularProgressIndicator()
+                item {
+                    DetailLoadingCard(text = "歌单详情加载中")
+                }
             }
         }
 
         is PlaylistHeaderUiState.Error -> {
-            DetailErrorCard(
-                message = headerState.message,
-                onRetry = onRetry
-            )
+            PlaylistDetailShell(
+                onBack = onBack,
+                listState = outerListState,
+                bottomOverlayPadding = bottomOverlayPadding,
+                scaffoldBackButtonTint = topBarContentColor,
+                heroContent = {
+                    PlaylistDetailHeroSkeleton()
+                }
+            ) {
+                item {
+                    DetailErrorCard(
+                        message = headerState.message,
+                        onRetry = onRetry,
+                        testTag = "playlist_detail_error"
+                    )
+                }
+            }
         }
 
         is PlaylistHeaderUiState.Content -> {
@@ -619,6 +642,51 @@ private fun PlaylistHeroArt(
 }
 
 @Composable
+private fun PlaylistDetailHeroSkeleton() {
+    val skeletonColor = MaterialTheme.colorScheme.primary
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("playlist_detail_hero_skeleton"),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .background(skeletonColor.copy(alpha = 0.18f))
+        )
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.62f)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(skeletonColor.copy(alpha = 0.18f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(skeletonColor.copy(alpha = 0.14f))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.55f)
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(skeletonColor.copy(alpha = 0.14f))
+            )
+        }
+    }
+}
+
+@Composable
 private fun PlaylistDetailStickyTabsHeader(
     stickyHeaderInsetProgress: Float,
     stickyHeaderTopInset: Dp,
@@ -651,7 +719,8 @@ private fun PlaylistDetailStickyTabsHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PlaylistDetailTab.entries.forEach { tab ->
@@ -659,9 +728,13 @@ private fun PlaylistDetailStickyTabsHeader(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
-                                onTabSelected(tab)
-                            }
+                            .defaultMinSize(minHeight = 48.dp)
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.Tab,
+                                onClick = { onTabSelected(tab) }
+                            )
+                            .padding(vertical = 4.dp)
                             .testTag(tab.testTag),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -808,6 +881,7 @@ private fun PlaylistTracksTabPage(
                     PlaylistTrackRowCard(
                         item = tracksState.items[index],
                         order = index + 1,
+                        showDivider = index != tracksState.items.lastIndex,
                         onClick = {
                             onTrackClick(index)
                         }
@@ -996,55 +1070,100 @@ private fun PlaylistMetricText(
 private fun PlaylistTrackRowCard(
     item: PlaylistTrackRow,
     order: Int,
+    showDivider: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
+    val metadata = listOfNotNull(
+        item.artistText.takeIf { it.isNotBlank() },
+        item.albumTitle.takeIf { it.isNotBlank() }
+    ).joinToString(" · ")
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick)
-            .testTag("playlist_track_${item.trackId}"),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .testTag("playlist_track_${item.trackId}")
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = order.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(34.dp)
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .width(34.dp)
+                    .testTag("playlist_track_index_${item.trackId}")
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .testTag("playlist_track_cover_${item.trackId}"),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.coverUrl.isNullOrBlank()) {
+                    Icon(
+                        imageVector = Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                } else {
+                    AsyncImage(
+                        model = item.coverUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (metadata.isNotBlank()) {
+                    Text(
+                        text = metadata,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier.width(44.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
                 Text(
-                    text = "${item.artistText} · ${item.albumTitle}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = formatTrackDuration(item.durationMs),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.testTag("playlist_track_duration_${item.trackId}")
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = formatTrackDuration(item.durationMs),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 130.dp, end = 20.dp),
+                thickness = 0.5.dp,
+                color = PlayerLiteVisualTheme.colors.dividerSubtle
             )
         }
     }

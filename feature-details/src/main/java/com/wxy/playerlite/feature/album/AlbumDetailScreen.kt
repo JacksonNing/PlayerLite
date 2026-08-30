@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -33,6 +34,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +48,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,12 +74,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.detail.DetailBottomScrim
 import com.wxy.playerlite.feature.detail.DetailErrorCard
 import com.wxy.playerlite.feature.detail.DetailLoadingCard
@@ -181,12 +188,24 @@ fun AlbumDetailScreen(
                 onBack = onBack,
                 listState = bodyListState,
                 bottomOverlayPadding = bottomOverlayPadding,
-                scaffoldBackButtonTint = topBarContentColor,
+                showScaffoldBackButton = false,
+                scaffoldBackButtonTint = Color.Transparent,
+                overlayContent = {
+                    AlbumDetailCollapsingTopBar(
+                        albumTitle = "",
+                        accentColor = heroAccentColor,
+                        topBarContentColor = topBarContentColor,
+                        collapseProgress = animatedCollapseProgress,
+                        stickyHeaderInsetProgress = stickyHeaderInsetProgress,
+                        compactTopBarHeight = compactTopBarHeight,
+                        onBack = onBack
+                    )
+                },
                 heroContent = {
                     AlbumDetailHeroSkeleton()
                 }
             ) {
-                item {
+                albumDetailFallbackBodyContent {
                     DetailLoadingCard(text = "专辑详情加载中")
                 }
             }
@@ -197,12 +216,24 @@ fun AlbumDetailScreen(
                 onBack = onBack,
                 listState = bodyListState,
                 bottomOverlayPadding = bottomOverlayPadding,
-                scaffoldBackButtonTint = topBarContentColor,
+                showScaffoldBackButton = false,
+                scaffoldBackButtonTint = Color.Transparent,
+                overlayContent = {
+                    AlbumDetailCollapsingTopBar(
+                        albumTitle = "",
+                        accentColor = heroAccentColor,
+                        topBarContentColor = topBarContentColor,
+                        collapseProgress = animatedCollapseProgress,
+                        stickyHeaderInsetProgress = stickyHeaderInsetProgress,
+                        compactTopBarHeight = compactTopBarHeight,
+                        onBack = onBack
+                    )
+                },
                 heroContent = {
                     AlbumDetailHeroSkeleton()
                 }
             ) {
-                item {
+                albumDetailFallbackBodyContent {
                     DetailErrorCard(
                         message = contentState.message,
                         onRetry = onRetry,
@@ -308,6 +339,21 @@ private fun AlbumDetailShell(
             bodyContent = bodyContent
         )
         overlayContent()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyListScope.albumDetailFallbackBodyContent(
+    content: @Composable () -> Unit
+) {
+    item {
+        Box(
+            modifier = Modifier
+                .fillParentMaxHeight()
+                .padding(vertical = 12.dp)
+        ) {
+            content()
+        }
     }
 }
 
@@ -460,6 +506,7 @@ private fun AlbumTracksTabPage(
                 AlbumTrackRowCard(
                     item = content.tracks[index],
                     order = index + 1,
+                    showDivider = index < content.tracks.lastIndex,
                     onClick = {
                         onTrackClick(index)
                     }
@@ -790,7 +837,8 @@ private fun AlbumDetailStickyTabsHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 AlbumDetailTab.entries.forEach { tab ->
@@ -798,9 +846,15 @@ private fun AlbumDetailStickyTabsHeader(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
-                                onTabSelected(tab)
-                            }
+                            .defaultMinSize(minHeight = 48.dp)
+                            .selectable(
+                                selected = isSelected,
+                                onClick = {
+                                    onTabSelected(tab)
+                                },
+                                role = Role.Tab
+                            )
+                            .padding(vertical = 4.dp)
                             .testTag(tab.testTag),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1009,55 +1063,88 @@ private fun AlbumMetricText(
 private fun AlbumTrackRowCard(
     item: AlbumTrackRow,
     order: Int,
+    showDivider: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick)
-            .testTag("album_track_${item.trackId}"),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .testTag("album_track_${item.trackId}")
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = order.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.width(34.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.coverUrl.isNullOrBlank()) {
+                    Text(
+                        text = item.title.take(1),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    AsyncImage(
+                        model = item.coverUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "${item.artistText} · ${item.albumTitle}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = formatTrackDuration(item.durationMs),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier.width(44.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text(
+                    text = formatTrackDuration(item.durationMs),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 130.dp, end = 20.dp),
+                thickness = 0.5.dp,
+                color = PlayerLiteVisualTheme.colors.dividerSubtle
             )
         }
     }

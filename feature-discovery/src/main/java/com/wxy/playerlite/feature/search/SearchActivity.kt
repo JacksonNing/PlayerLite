@@ -1096,7 +1096,7 @@ private fun SearchResultCard(
         if (showDivider) {
             HorizontalDivider(
                 modifier = Modifier.padding(start = 68.dp),
-                thickness = 1.dp,
+                thickness = 0.5.dp,
                 color = SEARCH_DIVIDER_COLOR
             )
         }

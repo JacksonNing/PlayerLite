@@ -79,7 +79,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
-import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playlist.PlaylistItem
 import com.wxy.playerlite.playback.model.PlaybackMode
@@ -147,7 +146,6 @@ fun PlaylistBottomSheet(
     modifier: Modifier = Modifier
 ) {
     val visualTokens = PlayerLiteVisualTheme.colors
-    val brandPalette = PlayerLiteThemeContract.DefaultBrandPalettes.light
     val scrimInteraction = remember { MutableInteractionSource() }
     val reorderStepPx = with(LocalDensity.current) { 65.dp.toPx() }
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -155,14 +153,15 @@ fun PlaylistBottomSheet(
     var draggingOffsetY by remember { mutableFloatStateOf(0f) }
     var expandedMenuItemId by remember { mutableStateOf<String?>(null) }
     var reorderModeEnabled by remember { mutableStateOf(false) }
+    val reorderAvailable = canReorder && items.size > 1
     val listState = rememberLazyListState()
     val activeScrollTarget = items.getOrNull(activeIndex)?.id?.let { itemId ->
         itemId to activeIndex
     }
     var lastAutoScrolledTarget by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
-    LaunchedEffect(visible, canReorder) {
-        if (!visible || !canReorder) {
+    LaunchedEffect(visible, reorderAvailable) {
+        if (!visible || !reorderAvailable) {
             lastAutoScrolledTarget = null
             expandedMenuItemId = null
             reorderModeEnabled = false
@@ -245,7 +244,7 @@ fun PlaylistBottomSheet(
                 modifier = surfaceModifier
                     .testTag("playlist_sheet_surface"),
                 shape = surfaceShape,
-                color = brandPalette.neutral,
+                color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 16.dp,
                 border = BorderStroke(
@@ -274,7 +273,7 @@ fun PlaylistBottomSheet(
                         stackActions = stackHeaderActions,
                         itemCount = items.size,
                         playbackMode = playbackMode,
-                        canReorder = canReorder,
+                        canReorder = reorderAvailable,
                         reorderModeEnabled = reorderModeEnabled,
                         visualTokens = visualTokens,
                         onCyclePlaybackMode = onCyclePlaybackMode,
@@ -307,19 +306,21 @@ fun PlaylistBottomSheet(
                         }
                     }
 
-                    Text(
-                        text = if (reorderModeEnabled) {
-                            "长按歌曲并拖动调整顺序"
-                        } else {
-                            "点击排序后，长按歌曲调整顺序"
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 12.dp)
-                            .testTag("playlist_sheet_reorder_hint"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = visualTokens.textMuted
-                    )
+                    if (reorderAvailable) {
+                        Text(
+                            text = if (reorderModeEnabled) {
+                                "长按歌曲并拖动调整顺序"
+                            } else {
+                                "点击排序后，长按歌曲调整顺序"
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 12.dp)
+                                .testTag("playlist_sheet_reorder_hint"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = visualTokens.textMuted
+                        )
+                    }
 
                     Box(
                         modifier = Modifier
@@ -334,7 +335,7 @@ fun PlaylistBottomSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "播放列表为空，点击右上角文件按钮添加音频",
+                                text = "播放列表为空，添加音频后会显示在这里",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -359,8 +360,9 @@ fun PlaylistBottomSheet(
                                 val itemVisuals = resolvePlaylistSheetItemVisuals(
                                     isActive = isActive,
                                     isDragging = isDragging,
-                                    canReorder = canReorder && reorderModeEnabled,
-                                    visualTokens = visualTokens
+                                    canReorder = reorderAvailable && reorderModeEnabled,
+                                    visualTokens = visualTokens,
+                                    onSurfaceColor = MaterialTheme.colorScheme.onSurface
                                 )
                                 Surface(
                                     modifier = Modifier
@@ -374,7 +376,7 @@ fun PlaylistBottomSheet(
                                             scaleY = if (isDragging) 1.01f else 1f
                                         }
                                         .let { baseModifier ->
-                                            if (!canReorder || !reorderModeEnabled) {
+                                            if (!reorderAvailable || !reorderModeEnabled) {
                                                 baseModifier
                                             } else {
                                                 baseModifier.pointerInput(
@@ -444,14 +446,14 @@ fun PlaylistBottomSheet(
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            if (reorderModeEnabled) {
+                                            if (reorderModeEnabled && reorderAvailable) {
                                                 Box(
                                                     modifier = Modifier.size(width = 28.dp, height = 44.dp),
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     PlaylistSheetDragHandle(
                                                         tint = itemVisuals.dragHandleTint,
-                                                        enabled = canReorder,
+                                                        enabled = reorderAvailable,
                                                         modifier = Modifier
                                                             .testTag("playlist_sheet_drag_handle_${item.id}")
                                                     )
@@ -538,7 +540,7 @@ fun PlaylistBottomSheet(
                                                             }
                                                     },
                                                     modifier = Modifier
-                                                        .size(40.dp)
+                                                        .size(48.dp)
                                                         .testTag("playlist_sheet_more_${item.id}")
                                                 ) {
                                                     Icon(
@@ -736,6 +738,7 @@ private fun PlaylistSheetHeaderActions(
     ) {
         Row(
             modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
                 .clickable(onClick = onCyclePlaybackMode)
                 .testTag("playlist_sheet_mode_button")
                 .padding(horizontal = 6.dp, vertical = 10.dp),
@@ -797,7 +800,7 @@ private fun PlaylistSheetHeaderActions(
 private fun PlaylistSheetCloseButton(onDismiss: () -> Unit) {
     IconButton(
         onClick = onDismiss,
-        modifier = Modifier.size(40.dp)
+        modifier = Modifier.size(48.dp)
     ) {
         Icon(
             imageVector = Icons.Rounded.Close,
@@ -860,7 +863,8 @@ fun resolvePlaylistSheetItemVisuals(
     isActive: Boolean,
     isDragging: Boolean,
     canReorder: Boolean,
-    visualTokens: com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens
+    visualTokens: com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens,
+    onSurfaceColor: Color
 ): PlaylistSheetItemVisuals {
     val baseBorder = BorderStroke(
         width = 1.dp,
@@ -869,7 +873,7 @@ fun resolvePlaylistSheetItemVisuals(
     return when {
         isDragging -> PlaylistSheetItemVisuals(
             containerColor = visualTokens.surfaceRaised,
-            titleColor = PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface,
+            titleColor = onSurfaceColor,
             subtitleColor = visualTokens.textMuted,
             dragHandleTint = visualTokens.accentStrong,
             artworkFallbackContainerColor = visualTokens.accentStrong.copy(alpha = 0.10f),
@@ -889,7 +893,7 @@ fun resolvePlaylistSheetItemVisuals(
 
         else -> PlaylistSheetItemVisuals(
             containerColor = Color.Transparent,
-            titleColor = PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface,
+            titleColor = onSurfaceColor,
             subtitleColor = visualTokens.textMuted,
             dragHandleTint = visualTokens.textSecondary,
             artworkFallbackContainerColor = visualTokens.surfaceMuted.copy(alpha = 0.85f),

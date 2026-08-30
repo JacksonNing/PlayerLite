@@ -13,6 +13,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -51,13 +53,15 @@ class PlaylistSheetVisualsTest {
             isActive = true,
             isDragging = false,
             canReorder = true,
-            visualTokens = visualTokens
+            visualTokens = visualTokens,
+            onSurfaceColor = colorScheme.onSurface
         )
         val inactive = resolvePlaylistSheetItemVisuals(
             isActive = false,
             isDragging = false,
             canReorder = true,
-            visualTokens = visualTokens
+            visualTokens = visualTokens,
+            onSurfaceColor = colorScheme.onSurface
         )
 
         assertEquals(visualTokens.accentStrong.copy(alpha = 0.055f), active.containerColor)
@@ -66,9 +70,112 @@ class PlaylistSheetVisualsTest {
         assertEquals(null, active.border)
         assertTrue(!active.raised)
         assertEquals(Color.Transparent, inactive.containerColor)
-        assertEquals(PlayerLiteThemeContract.DefaultBrandPalettes.light.onSurface, inactive.titleColor)
+        assertEquals(colorScheme.onSurface, inactive.titleColor)
         assertEquals(visualTokens.textMuted, inactive.subtitleColor)
         assertEquals(null, inactive.border)
+    }
+
+    @Test
+    fun resolvePlaylistSheetItemVisuals_shouldUseCurrentDarkThemeOnSurfaceColor() {
+        val colorScheme = PlayerLiteThemeContract.colorScheme(darkTheme = true)
+        val visualTokens = PlayerLiteThemeContract.visualTokens(
+            darkTheme = true,
+            colorScheme = colorScheme
+        )
+
+        val inactive = resolvePlaylistSheetItemVisuals(
+            isActive = false,
+            isDragging = false,
+            canReorder = false,
+            visualTokens = visualTokens,
+            onSurfaceColor = colorScheme.onSurface
+        )
+
+        assertEquals(colorScheme.onSurface, inactive.titleColor)
+    }
+
+    @Test
+    fun playlistBottomSheet_shouldHideReorderHintWhenReorderUnavailableOrSingleItem() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                PlaylistBottomSheet(
+                    visible = true,
+                    items = listOf(
+                        PlaylistItem(
+                            id = "single",
+                            uri = "file:///single.mp3",
+                            displayName = "单曲"
+                        )
+                    ),
+                    activeIndex = 0,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    showOriginalOrderInShuffle = false,
+                    canReorder = true,
+                    onDismiss = {},
+                    onShowOriginalOrderInShuffleChange = {},
+                    onSelect = {},
+                    onRemove = {},
+                    onMove = { _, _ -> }
+                )
+            }
+        }
+
+        composeRule.onAllNodesWithTag("playlist_sheet_reorder_hint").assertCountEquals(0)
+        composeRule.onNodeWithTag("playlist_sheet_more_single").assertWidthIsAtLeast(48.dp)
+        composeRule.onNodeWithTag("playlist_sheet_more_single").assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithTag("playlist_sheet_mode_button").assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun playlistBottomSheet_shouldHideReorderControlsWhenReorderIsDisabled() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                PlaylistBottomSheet(
+                    visible = true,
+                    items = listOf(
+                        PlaylistItem(id = "first", uri = "file:///first.mp3", displayName = "第一首"),
+                        PlaylistItem(id = "second", uri = "file:///second.mp3", displayName = "第二首")
+                    ),
+                    activeIndex = 0,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    showOriginalOrderInShuffle = false,
+                    canReorder = false,
+                    onDismiss = {},
+                    onShowOriginalOrderInShuffleChange = {},
+                    onSelect = {},
+                    onRemove = {},
+                    onMove = { _, _ -> }
+                )
+            }
+        }
+
+        composeRule.onAllNodesWithTag("playlist_sheet_reorder_hint").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("playlist_sheet_reorder_toggle").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("playlist_sheet_drag_handle_first").assertCountEquals(0)
+    }
+
+    @Test
+    fun playlistBottomSheet_emptyState_shouldUseThemeNeutralCopyWithoutMissingActionReference() {
+        composeRule.setContent {
+            PlayerLiteTheme {
+                PlaylistBottomSheet(
+                    visible = true,
+                    items = emptyList(),
+                    activeIndex = -1,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    showOriginalOrderInShuffle = false,
+                    canReorder = true,
+                    onDismiss = {},
+                    onShowOriginalOrderInShuffleChange = {},
+                    onSelect = {},
+                    onRemove = {},
+                    onMove = { _, _ -> }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("播放列表为空，添加音频后会显示在这里").assertIsDisplayed()
+        composeRule.onAllNodesWithText("播放列表为空，点击右上角文件按钮添加音频").assertCountEquals(0)
     }
 
     @Test

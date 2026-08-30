@@ -610,7 +610,7 @@ private fun RecentTrackRow(
                 },
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
-                    .width(24.dp)
+                    .width(34.dp)
                     .testTag(positionTestTag)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -670,7 +670,7 @@ private fun RecentTrackRow(
                 if (durationMs > 0L) {
                     Text(
                         text = formatDurationLabel(durationMs),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                         color = visualTokens.textSecondary,
                         modifier = Modifier.testTag("${positionTestTag}_duration")
                     )
@@ -692,9 +692,9 @@ private fun RecentTrackRow(
         }
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = 100.dp, end = 20.dp),
+                modifier = Modifier.padding(start = 110.dp, end = 20.dp),
                 color = visualTokens.dividerSubtle,
-                thickness = 1.dp
+                thickness = 0.5.dp
             )
         }
     }
@@ -756,7 +756,7 @@ private fun RecentPlaybackGenericRow(
                 },
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
-                    .width(24.dp)
+                    .width(34.dp)
                     .testTag("recent_playback_item_index_${item.id}")
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -836,8 +836,8 @@ private fun RecentPlaybackGenericRow(
         }
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = 100.dp, end = 20.dp),
-                thickness = 1.dp,
+                modifier = Modifier.padding(start = 110.dp, end = 20.dp),
+                thickness = 0.5.dp,
                 color = visualTokens.dividerSubtle
             )
         }

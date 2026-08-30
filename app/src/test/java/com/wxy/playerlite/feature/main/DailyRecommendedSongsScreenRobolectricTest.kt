@@ -119,6 +119,8 @@ class DailyRecommendedSongsScreenRobolectricTest {
             .performScrollToNode(hasTestTag("daily_recommended_tracks_section"))
         composeRule.onNodeWithTag("daily_recommended_tracks_section").assertIsDisplayed()
         composeRule.onNodeWithText("今日推荐歌曲").assertIsDisplayed()
+        composeRule.onNodeWithTag("detail_scaffold_list")
+            .performScrollToNode(hasTestTag("daily_recommended_row_more_song-1"))
         composeRule.onNodeWithTag("daily_recommended_row_song-1")
             .assertIsDisplayed()
             .assertHasClickAction()
@@ -126,7 +128,8 @@ class DailyRecommendedSongsScreenRobolectricTest {
             .assertIsDisplayed()
             .assertHasClickAction()
         composeRule.onNodeWithText("Song 1").assertIsDisplayed()
-        composeRule.onNodeWithText("Artist 1 · Album 1 · 超80%人播放").assertIsDisplayed()
+        composeRule.onNodeWithText("Artist 1 · Album 1").assertIsDisplayed()
+        composeRule.onNodeWithText("超80%人播放").assertIsDisplayed()
 
         composeRule.onNodeWithTag("detail_back_button").performClick()
         composeRule.onNodeWithTag("daily_recommended_hero_primary_action").performClick()
@@ -186,9 +189,12 @@ class DailyRecommendedSongsScreenRobolectricTest {
             }
         }
 
+        composeRule.onNodeWithTag("detail_scaffold_list")
+            .performScrollToNode(hasTestTag("daily_recommended_row_more_song-2"))
         composeRule.onNodeWithTag("daily_recommended_row_more_song-2").performClick()
         composeRule.onNodeWithText("下一首播放").assertIsDisplayed()
         composeRule.onNodeWithText("查看歌曲详情").assertIsDisplayed()
+        composeRule.onNodeWithText("Artist 2 · Album 2").assertIsDisplayed()
         composeRule.onAllNodesWithText("查看歌手").assertCountEquals(0)
         composeRule.onAllNodesWithText("查看专辑").assertCountEquals(0)
     }

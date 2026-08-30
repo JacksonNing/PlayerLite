@@ -317,13 +317,13 @@ private fun SongDetailImmersiveTopBar(
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .size(48.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.12f))
                 .border(
                     width = 1.dp,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .clickable(onClick = onBack)
                 .testTag("detail_back_button"),
