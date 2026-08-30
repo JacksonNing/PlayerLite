@@ -10,7 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,7 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -173,7 +170,6 @@ internal fun SearchScreen(
     onSongOverflowClick: (SearchResultUiModel.Song) -> Unit = {},
     onRetry: () -> Unit
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
@@ -190,7 +186,6 @@ internal fun SearchScreen(
                 onBack = onBack,
                 onQueryChanged = onQueryChanged,
                 onSubmitSearch = onSubmitSearch,
-                usesExpandedTypography = usesExpandedTypography,
                 modifier = Modifier.testTag("search_top_bar")
             )
 
@@ -214,7 +209,7 @@ internal fun SearchScreen(
                         .fillMaxWidth()
                         .testTag("search_history_pinned")
                 )
-                Spacer(modifier = Modifier.height(if (usesExpandedTypography) 24.dp else 20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -261,7 +256,6 @@ private fun SearchTopBar(
     onBack: () -> Unit,
     onQueryChanged: (String) -> Unit,
     onSubmitSearch: () -> Unit,
-    usesExpandedTypography: Boolean,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -279,14 +273,14 @@ private fun SearchTopBar(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = "返回",
                 tint = SEARCH_TEXT_SECONDARY,
-                modifier = Modifier.size(if (usesExpandedTypography) 22.dp else 20.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
 
         Surface(
             modifier = Modifier
                 .weight(1f)
-                .height(if (usesExpandedTypography) 52.dp else 48.dp)
+                .height(52.dp)
                 .testTag("search_input_container"),
             shape = RoundedCornerShape(18.dp),
             color = SEARCH_PANEL_COLOR,
@@ -308,7 +302,7 @@ private fun SearchTopBar(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = SEARCH_ACCENT_MUTED_COLOR,
-                    modifier = Modifier.size(if (usesExpandedTypography) 20.dp else 19.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 BasicTextField(
                     value = query,
@@ -317,13 +311,8 @@ private fun SearchTopBar(
                         .weight(1f)
                         .testTag("search_input"),
                     singleLine = true,
-                    textStyle = (
-                        if (usesExpandedTypography) {
-                            MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
-                        } else {
-                            MaterialTheme.typography.bodyMedium
-                        }
-                    ).copy(
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -334,11 +323,7 @@ private fun SearchTopBar(
                         if (query.isBlank()) {
                             Text(
                                 text = "搜索歌曲 / 歌手 / 专辑",
-                                style = if (usesExpandedTypography) {
-                                    MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
-                                } else {
-                                    MaterialTheme.typography.bodyMedium
-                                },
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                                 color = SEARCH_TEXT_MUTED
                             )
                         }
@@ -373,10 +358,9 @@ private fun SearchPinnedHistorySection(
     onClearHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(if (usesExpandedTypography) 12.dp else 10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SearchSectionTitle(
             title = "最近搜索",
@@ -400,7 +384,7 @@ private fun SearchPinnedHistorySection(
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(if (usesExpandedTypography) 10.dp else 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
         ) {
             itemsIndexed(
@@ -501,9 +485,24 @@ private fun SearchSuggestContent(
         }
         if (query.isNotBlank()) {
             item(key = "suggestion_submit") {
-                SearchSuggestionSubmitRow(
-                    query = query,
-                    onClick = onSubmitSearch
+                SearchSuggestionRow(
+                    text = buildAnnotatedString {
+                        append("搜索“")
+                        val queryStart = length
+                        append(query)
+                        addStyle(
+                            style = SpanStyle(
+                                color = SEARCH_PRIMARY_RED,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            start = queryStart,
+                            end = length
+                        )
+                        append("”")
+                    },
+                    showDivider = true,
+                    onClick = onSubmitSearch,
+                    modifier = Modifier.testTag("search_suggestion_submit")
                 )
             }
         }
@@ -546,9 +545,12 @@ private fun SearchSuggestContent(
                         items = state.items,
                         key = { _, item -> item.keyword }
                     ) { index, item ->
-                        SearchSuggestionCard(
-                            query = query,
-                            keyword = item.keyword,
+                        SearchSuggestionRow(
+                            text = highlightedSuggestionText(
+                                keyword = item.keyword,
+                                query = query,
+                                accent = SEARCH_PRIMARY_RED
+                            ),
                             showDivider = index != state.items.lastIndex,
                             modifier = Modifier.testTag("search_suggestion_item_$index"),
                             onClick = { onSuggestionClick(item) }
@@ -763,7 +765,6 @@ private fun SearchResultTypeChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     val labelOpticalOffsetY = resolveSearchResultTypeLabelOpticalOffset(type)
     Surface(
         modifier = Modifier
@@ -792,11 +793,7 @@ private fun SearchResultTypeChip(
                     .offset(y = labelOpticalOffsetY)
                     .testTag("search_result_type_label_${type.name.lowercase()}")
                     .padding(horizontal = 6.dp),
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
-                } else {
-                    MaterialTheme.typography.bodySmall
-                },
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 color = if (selected) SEARCH_PRIMARY_RED else SEARCH_TEXT_SECONDARY,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
@@ -859,7 +856,6 @@ private fun SearchHotBoardRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     val rankColor = when (index) {
         0 -> SEARCH_PRIMARY_RED
         1 -> SEARCH_RANK_SECONDARY
@@ -880,17 +876,13 @@ private fun SearchHotBoardRow(
     ) {
         Box(
             modifier = Modifier
-                .width(if (usesExpandedTypography) 38.dp else 34.dp)
+                .width(38.dp)
                 .testTag("search_hot_rank_$index"),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "${index + 1}",
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp)
-                } else {
-                    MaterialTheme.typography.titleMedium
-                },
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                 color = rankColor,
                 fontWeight = if (index < 3) FontWeight.Bold else FontWeight.SemiBold
             )
@@ -901,11 +893,7 @@ private fun SearchHotBoardRow(
         ) {
             Text(
                 text = item.keyword,
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp)
-                } else {
-                    MaterialTheme.typography.titleSmall
-                },
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (index < 3) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
@@ -914,11 +902,7 @@ private fun SearchHotBoardRow(
             if (supportingText.isNotBlank()) {
                 Text(
                     text = supportingText,
-                    style = if (usesExpandedTypography) {
-                        MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
-                    } else {
-                        MaterialTheme.typography.bodySmall
-                    },
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = SEARCH_TEXT_SECONDARY,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -937,7 +921,6 @@ private fun SearchHistoryChip(
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
@@ -960,11 +943,7 @@ private fun SearchHistoryChip(
             ) {
                 Text(
                     text = keyword,
-                    style = if (usesExpandedTypography) {
-                        MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
-                    } else {
-                        MaterialTheme.typography.bodySmall
-                    },
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -990,11 +969,9 @@ private fun SearchHistoryChip(
 @Composable
 private fun SearchSectionTitle(
     title: String,
-    icon: (@Composable RowScope.() -> Unit)? = null,
     action: (@Composable RowScope.() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1002,17 +979,12 @@ private fun SearchSectionTitle(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        icon?.invoke(this)
         Text(
             text = title,
-            style = if (usesExpandedTypography) {
-                MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 20.sp,
-                    lineHeight = 26.sp
-                )
-            } else {
-                MaterialTheme.typography.titleSmall
-            },
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 20.sp,
+                lineHeight = 26.sp
+            ),
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold
         )
@@ -1028,28 +1000,21 @@ private fun SearchResultCard(
     onClick: () -> Unit,
     onSongOverflowClick: (SearchResultUiModel.Song) -> Unit
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     val supportingText = item.supportingText()
     val tertiaryText = item.tertiaryText()
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("search_result_card_${item.id}")
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(0.dp),
-        color = Color.Transparent,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = null
+            .clickable(onClick = onClick)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 if (item.coverUrl.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
@@ -1087,11 +1052,7 @@ private fun SearchResultCard(
                 ) {
                     Text(
                         text = item.title,
-                        style = if (usesExpandedTypography) {
-                            MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp)
-                        } else {
-                            MaterialTheme.typography.titleSmall
-                        },
+                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -1100,11 +1061,7 @@ private fun SearchResultCard(
                     if (supportingText.isNotBlank()) {
                         Text(
                             text = supportingText,
-                            style = if (usesExpandedTypography) {
-                                MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp)
-                            } else {
-                                MaterialTheme.typography.bodySmall
-                            },
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                             color = SEARCH_TEXT_SECONDARY,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -1136,13 +1093,12 @@ private fun SearchResultCard(
                     }
                 }
             }
-            if (showDivider) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 68.dp),
-                    thickness = 1.dp,
-                    color = SEARCH_DIVIDER_COLOR
-                )
-            }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 68.dp),
+                thickness = 1.dp,
+                color = SEARCH_DIVIDER_COLOR
+            )
         }
     }
 }
@@ -1153,7 +1109,6 @@ private fun SearchStatusCard(
     subtitle: String,
     action: @Composable (() -> Unit)? = null
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1169,21 +1124,13 @@ private fun SearchStatusCard(
         ) {
             Text(
                 text = title,
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.titleMedium
-                } else {
-                    MaterialTheme.typography.titleMedium
-                },
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = subtitle,
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
-                } else {
-                    MaterialTheme.typography.bodyMedium
-                },
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (action != null) {
@@ -1209,60 +1156,12 @@ private fun RetryButton(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun SearchSuggestionSubmitRow(
-    query: String,
-    onClick: () -> Unit
-) {
-    val accent = SEARCH_PRIMARY_RED
-    SearchSuggestionRow(
-        text = buildAnnotatedString {
-            append("搜索“")
-            val queryStart = length
-            append(query)
-            addStyle(
-                style = SpanStyle(
-                    color = accent,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                start = queryStart,
-                end = length
-            )
-            append("”")
-        },
-        showDivider = true,
-        onClick = onClick,
-        modifier = Modifier.testTag("search_suggestion_submit")
-    )
-}
-
-@Composable
-private fun SearchSuggestionCard(
-    query: String,
-    keyword: String,
-    showDivider: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    SearchSuggestionRow(
-        text = highlightedSuggestionText(
-            keyword = keyword,
-            query = query,
-            accent = SEARCH_PRIMARY_RED
-        ),
-        showDivider = showDivider,
-        onClick = onClick,
-        modifier = modifier
-    )
-}
-
-@Composable
 private fun SearchSuggestionRow(
     text: AnnotatedString,
     showDivider: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -1280,11 +1179,7 @@ private fun SearchSuggestionRow(
             )
             Text(
                 text = text,
-                style = if (usesExpandedTypography) {
-                    MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
-                } else {
-                    MaterialTheme.typography.bodyMedium
-                },
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1326,7 +1221,6 @@ private fun SearchHotBadge(
     item: SearchHotKeywordUiModel,
     rankIndex: Int
 ) {
-    val usesExpandedTypography = usesExpandedSearchTypography()
     if (!item.iconUrl.isNullOrBlank()) {
         AsyncImage(
             model = item.iconUrl,
@@ -1350,11 +1244,7 @@ private fun SearchHotBadge(
         Text(
             text = badgeText,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = if (usesExpandedTypography) {
-                MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp)
-            } else {
-                MaterialTheme.typography.labelSmall
-            },
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
             color = SEARCH_PRIMARY_RED,
             fontWeight = FontWeight.Bold
         )

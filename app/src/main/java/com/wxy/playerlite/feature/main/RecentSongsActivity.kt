@@ -308,8 +308,7 @@ internal fun RecentSongsScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = visualTokens.canvas,
-                    scrolledContainerColor = visualTokens.canvas
+                    containerColor = visualTokens.canvas
                 ),
                 navigationIcon = {
                     IconButton(
@@ -495,7 +494,6 @@ private fun RecentPlaybackContent(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    end = 0.dp,
                     bottom = 24.dp
                 )
             ) {
@@ -503,9 +501,14 @@ private fun RecentPlaybackContent(
                     items = contentState.items,
                     key = { _, item -> item.id }
                 ) { index, item ->
-                    RecentLocalPlaybackRow(
+                    RecentTrackRow(
                         position = index + 1,
-                        item = item,
+                        title = item.title,
+                        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
+                        imageUrl = item.imageUrl,
+                        durationMs = item.durationMs,
+                        positionTestTag = "recent_local_item_index_${item.id}",
+                        detailTestTag = "recent_local_item_more_${item.id}",
                         onClick = { onLocalItemClick(item) },
                         onOpenDetail = { onLocalItemOpenDetail(item) },
                         showDivider = index < contentState.items.lastIndex,
@@ -522,7 +525,6 @@ private fun RecentPlaybackContent(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    end = 0.dp,
                     bottom = 24.dp
                 )
             ) {
@@ -530,9 +532,14 @@ private fun RecentPlaybackContent(
                     items = contentState.items,
                     key = { _, item -> item.id }
                 ) { index, item ->
-                    RecentSongRow(
+                    RecentTrackRow(
                         position = index + 1,
-                        item = item,
+                        title = item.title,
+                        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
+                        imageUrl = item.imageUrl,
+                        durationMs = item.durationMs,
+                        positionTestTag = "recent_songs_item_index_${item.id}",
+                        detailTestTag = "recent_songs_item_more_${item.id}",
                         onClick = { onSongClick(item) },
                         onOpenDetail = { onSongOpenDetail(item) },
                         showDivider = index < contentState.items.lastIndex,
@@ -549,7 +556,6 @@ private fun RecentPlaybackContent(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    end = 0.dp,
                     bottom = 24.dp
                 )
             ) {
@@ -569,54 +575,6 @@ private fun RecentPlaybackContent(
             }
         }
     }
-}
-
-@Composable
-private fun RecentLocalPlaybackRow(
-    position: Int,
-    item: RecentLocalPlaybackItemUiModel,
-    onClick: () -> Unit,
-    onOpenDetail: () -> Unit,
-    showDivider: Boolean,
-    modifier: Modifier = Modifier
-) {
-    RecentTrackRow(
-        position = position,
-        title = item.title,
-        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
-        imageUrl = item.imageUrl,
-        durationMs = item.durationMs,
-        positionTestTag = "recent_local_item_index_${item.id}",
-        detailTestTag = "recent_local_item_more_${item.id}",
-        onClick = onClick,
-        onOpenDetail = onOpenDetail,
-        showDivider = showDivider,
-        modifier = modifier
-    )
-}
-
-@Composable
-private fun RecentSongRow(
-    position: Int,
-    item: RecentSongItemUiModel,
-    onClick: () -> Unit,
-    onOpenDetail: () -> Unit,
-    showDivider: Boolean,
-    modifier: Modifier = Modifier
-) {
-    RecentTrackRow(
-        position = position,
-        title = item.title,
-        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
-        imageUrl = item.imageUrl,
-        durationMs = item.durationMs,
-        positionTestTag = "recent_songs_item_index_${item.id}",
-        detailTestTag = "recent_songs_item_more_${item.id}",
-        onClick = onClick,
-        onOpenDetail = onOpenDetail,
-        showDivider = showDivider,
-        modifier = modifier
-    )
 }
 
 @Composable
@@ -718,10 +676,19 @@ private fun RecentTrackRow(
                     )
                 }
             }
-            RecentDetailEntryButton(
-                testTag = detailTestTag,
-                onClick = onOpenDetail
-            )
+            IconButton(
+                onClick = onOpenDetail,
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag(detailTestTag)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreHoriz,
+                    contentDescription = "查看歌曲详情",
+                    modifier = Modifier.size(20.dp),
+                    tint = visualTokens.textSecondary
+                )
+            }
         }
         if (showDivider) {
             HorizontalDivider(
@@ -730,27 +697,6 @@ private fun RecentTrackRow(
                 thickness = 1.dp
             )
         }
-    }
-}
-
-@Composable
-private fun RecentDetailEntryButton(
-    testTag: String,
-    onClick: () -> Unit
-) {
-    val visualTokens = PlayerLiteVisualTheme.colors
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(48.dp)
-            .testTag(testTag)
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.MoreHoriz,
-            contentDescription = "查看歌曲详情",
-            modifier = Modifier.size(20.dp),
-            tint = visualTokens.textSecondary
-        )
     }
 }
 

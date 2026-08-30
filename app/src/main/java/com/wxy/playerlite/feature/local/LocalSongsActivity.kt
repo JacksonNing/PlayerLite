@@ -232,8 +232,7 @@ internal fun LocalSongsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = visualTokens.canvas,
-                        scrolledContainerColor = visualTokens.canvas
+                        containerColor = visualTokens.canvas
                     )
                 )
                 HorizontalDivider(
