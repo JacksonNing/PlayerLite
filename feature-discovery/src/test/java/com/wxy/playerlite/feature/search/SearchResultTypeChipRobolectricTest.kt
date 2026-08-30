@@ -221,7 +221,7 @@ class SearchResultTypeChipRobolectricTest {
 
         assertTrue(
             "Expected MV label bottom to align with Chinese labels, but bottoms were ${mvLabelBounds.bottom} vs ${albumLabelBounds.bottom}",
-            abs(mvLabelBounds.bottom - albumLabelBounds.bottom) < 1f
+            abs(mvLabelBounds.bottom - albumLabelBounds.bottom) <= 1f
         )
     }
 

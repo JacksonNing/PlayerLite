@@ -2,7 +2,10 @@ package com.wxy.playerlite.feature.main
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -44,6 +47,7 @@ class RecentSongsScreenRobolectricTest {
                                         artistText = "周杰伦 / 温岚",
                                         imageUrl = null,
                                         albumTitle = "叶惠美",
+                                        durationMs = 269_000L,
                                         detailAction = ContentEntryAction.OpenDetail(
                                             SearchRouteTarget.Song("song-1")
                                         )
@@ -84,19 +88,47 @@ class RecentSongsScreenRobolectricTest {
 
         RecentPlaybackTab.entries.forEach { tab ->
             composeRule.onNodeWithTag("recent_playback_tab_${tab.testTag}")
-                .assertIsDisplayed()
                 .assertHasClickAction()
         }
 
         composeRule.onNodeWithText("反方向的钟").assertIsDisplayed()
         composeRule.onNodeWithTag("recent_songs_item_more_song-1").assertIsDisplayed()
+        composeRule.onNodeWithTag("recent_playback_tab_songs").assertIsSelected()
+        composeRule.onNodeWithTag(
+            "recent_playback_tab_songs_indicator",
+            useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(
+            "recent_playback_tab_albums_indicator",
+            useUnmergedTree = true
+        ).assertCountEquals(0)
+        composeRule.onNodeWithTag(
+            "recent_songs_item_index_song-1",
+            useUnmergedTree = true
+        ).assertTextEquals("01")
+        composeRule.onNodeWithTag(
+            "recent_songs_item_index_song-1_duration",
+            useUnmergedTree = true
+        ).assertTextEquals("4:29")
 
         composeRule.onNodeWithTag("recent_playback_tab_albums").performClick()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("叶惠美").assertIsDisplayed()
-        composeRule.onNodeWithText("周杰伦").assertIsDisplayed()
-        composeRule.onNodeWithText("专辑 · 10 首").assertIsDisplayed()
+        composeRule.onNodeWithText("周杰伦 · 专辑 · 10 首").assertIsDisplayed()
+        composeRule.onNodeWithTag("recent_playback_tab_albums").assertIsSelected()
+        composeRule.onAllNodesWithTag(
+            "recent_playback_tab_albums_indicator",
+            useUnmergedTree = true
+        ).assertCountEquals(1)
+        composeRule.onAllNodesWithTag(
+            "recent_playback_tab_songs_indicator",
+            useUnmergedTree = true
+        ).assertCountEquals(0)
+        composeRule.onNodeWithTag(
+            "recent_playback_item_index_album-1",
+            useUnmergedTree = true
+        ).assertTextEquals("01")
         composeRule.onAllNodesWithTag("recent_songs_item_more_song-1").assertCountEquals(0)
     }
 
@@ -219,16 +251,24 @@ class RecentSongsScreenRobolectricTest {
         }
 
         composeRule.onNodeWithText("晴天 MV").assertIsDisplayed()
-        composeRule.onNodeWithText("周杰伦").assertIsDisplayed()
-        composeRule.onNodeWithText("视频 · 128 万播放").assertIsDisplayed()
-        composeRule.onNodeWithTag("recent_playback_item_videos_video-1").assertIsDisplayed()
-        composeRule.onNodeWithTag("recent_playback_more_placeholder_video-1").assertIsDisplayed()
+        composeRule.onNodeWithText("周杰伦 · 视频 · 128 万播放").assertIsDisplayed()
+        composeRule.onNodeWithTag("recent_playback_item_videos_video-1")
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
+        composeRule.onNodeWithTag("recent_playback_more_placeholder_video-1")
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
+        composeRule.onNodeWithTag(
+            "recent_playback_item_index_video-1",
+            useUnmergedTree = true
+        ).assertTextEquals("01")
         composeRule.onAllNodesWithText("查看歌曲详情").assertCountEquals(0)
     }
 
     @Test
     fun songTab_shouldKeepOverflowMenuActions() {
         var clickedId: String? = null
+        var rowClickCount = 0
         var detailId: String? = null
 
         composeRule.setContent {
@@ -260,7 +300,10 @@ class RecentSongsScreenRobolectricTest {
                     onLoginClick = {},
                     onRetry = {},
                     onSelectTab = {},
-                    onItemClick = { clickedId = it.id },
+                    onItemClick = {
+                        clickedId = it.id
+                        rowClickCount += 1
+                    },
                     onItemInsertNext = {},
                     onItemOpenDetail = { detailId = it.id },
                     onItemOpenArtist = {},
@@ -275,10 +318,17 @@ class RecentSongsScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("recent_songs_item_song-1").performClick()
-        composeRule.onNodeWithTag("recent_songs_item_more_song-1").performClick()
 
         composeRule.runOnIdle {
             assertEquals("song-1", clickedId)
+            assertEquals(1, rowClickCount)
+            assertEquals(null, detailId)
+        }
+
+        composeRule.onNodeWithTag("recent_songs_item_more_song-1").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, rowClickCount)
             assertEquals("song-1", detailId)
         }
     }
@@ -338,6 +388,14 @@ class RecentSongsScreenRobolectricTest {
 
         composeRule.onNodeWithTag("recent_local_item_$itemId").performClick()
         composeRule.onNodeWithTag("recent_local_item_more_$itemId").performClick()
+        composeRule.onNodeWithTag(
+            "recent_local_item_index_$itemId",
+            useUnmergedTree = true
+        ).assertTextEquals("01")
+        composeRule.onNodeWithTag(
+            "recent_local_item_index_${itemId}_duration",
+            useUnmergedTree = true
+        ).assertTextEquals("3:35")
 
         composeRule.runOnIdle {
             assertEquals(playbackUri, clickedUri)

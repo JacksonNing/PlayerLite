@@ -57,7 +57,7 @@ class HomeOverviewScreenRobolectricTest {
     }
 
     @Test
-    fun homeHeader_shouldShowGreetingWithoutBrandMark() {
+    fun homeHeader_shouldShowMorningGreetingWithoutBrandMark() {
         composeRule.setContent {
             MaterialTheme {
                 HomeOverviewScreen(
@@ -69,14 +69,74 @@ class HomeOverviewScreenRobolectricTest {
                     bottomContentPadding = 0.dp,
                     onSearchClick = {},
                     onRetry = {},
-                    onAction = {}
+                    onAction = {},
+                    currentHour = 9
                 )
             }
         }
 
         composeRule.onNodeWithTag("home_header_greeting").assertIsDisplayed()
-        composeRule.onNodeWithText("晚上好").assertIsDisplayed()
+        composeRule.onNodeWithText("早上好").assertIsDisplayed()
+        composeRule.onAllNodesWithText("晚上好").assertCountEquals(0)
         composeRule.onAllNodesWithText("PlayerLite").assertCountEquals(0)
+    }
+
+    @Test
+    fun homeGreetingForHour_shouldRespectLocalTimeBoundaries() {
+        assertEquals("晚上好", homeGreetingForHour(0))
+        assertEquals("晚上好", homeGreetingForHour(4))
+        assertEquals("早上好", homeGreetingForHour(5))
+        assertEquals("早上好", homeGreetingForHour(11))
+        assertEquals("下午好", homeGreetingForHour(12))
+        assertEquals("下午好", homeGreetingForHour(17))
+        assertEquals("晚上好", homeGreetingForHour(18))
+        assertEquals("晚上好", homeGreetingForHour(23))
+    }
+
+    @Test
+    fun homeHeader_withAvatarUrl_shouldRenderAvatarImage() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeOverviewScreen(
+                    overviewState = HomeOverviewUiState(
+                        isLoading = false,
+                        sections = emptyList(),
+                        searchKeywords = listOf("默认热搜")
+                    ),
+                    bottomContentPadding = 0.dp,
+                    onSearchClick = {},
+                    onRetry = {},
+                    onAction = {},
+                    avatarUrl = "https://example.com/avatar.png"
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("home_header_avatar").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_header_avatar_image").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeHeader_withoutAvatarUrl_shouldRenderPlaceholder() {
+        composeRule.setContent {
+            MaterialTheme {
+                HomeOverviewScreen(
+                    overviewState = HomeOverviewUiState(
+                        isLoading = false,
+                        sections = emptyList(),
+                        searchKeywords = listOf("默认热搜")
+                    ),
+                    bottomContentPadding = 0.dp,
+                    onSearchClick = {},
+                    onRetry = {},
+                    onAction = {},
+                    avatarUrl = " "
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("home_header_avatar_placeholder").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("home_header_avatar_image").assertCountEquals(0)
     }
 
     @Test

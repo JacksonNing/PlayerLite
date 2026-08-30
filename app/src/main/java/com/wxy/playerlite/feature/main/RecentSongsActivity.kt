@@ -10,10 +10,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +29,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,15 +57,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.album.AlbumDetailActivity
 import com.wxy.playerlite.feature.artist.ArtistDetailActivity
 import com.wxy.playerlite.feature.player.PlayerActivity
@@ -286,20 +291,38 @@ internal fun RecentSongsScreen(
     onLocalItemOpenArtist: (String) -> Unit,
     onLocalItemOpenAlbum: (String) -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = visualTokens.canvas,
         topBar = {
             TopAppBar(
-                title = { Text("最近播放") },
+                title = {
+                    Text(
+                        text = "最近播放",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
+                            lineHeight = 28.sp
+                        ),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = visualTokens.canvas,
+                    scrolledContainerColor = visualTokens.canvas
                 ),
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .size(44.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = "返回",
+                            modifier = Modifier.size(22.dp),
+                            tint = visualTokens.textSecondary
                         )
                     }
                 },
@@ -307,11 +330,16 @@ internal fun RecentSongsScreen(
                     if (state.isLoggedIn || state.selectedTab == RecentPlaybackTab.LOCAL) {
                         IconButton(
                             onClick = onRetry,
-                            modifier = Modifier.testTag("recent_songs_retry_action")
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(44.dp)
+                                .testTag("recent_songs_retry_action")
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Refresh,
-                                contentDescription = "刷新"
+                                contentDescription = "刷新",
+                                modifier = Modifier.size(22.dp),
+                                tint = visualTokens.textSecondary
                             )
                         }
                     }
@@ -364,45 +392,51 @@ private fun RecentPlaybackTabStrip(
     onSelectTab: (RecentPlaybackTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    val emphasisColor = recentPlaybackEmphasisColor()
     Row(
         modifier = modifier
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(start = 20.dp, end = 8.dp, bottom = 3.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         RecentPlaybackTab.entries.forEach { tab ->
             val selected = tab == selectedTab
-            Surface(
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onSelectTab(tab) }
+                    .width(52.dp)
+                    .height(48.dp)
+                    .selectable(
+                        selected = selected,
+                        role = Role.Tab,
+                        onClick = { onSelectTab(tab) }
+                    )
                     .testTag("recent_playback_tab_${tab.testTag}"),
-                shape = RoundedCornerShape(16.dp),
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                },
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
-                    } else {
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-                    }
-                )
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = tab.label,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = if (selected) {
-                        MaterialTheme.colorScheme.primary
+                        emphasisColor
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        visualTokens.textSecondary
                     },
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                 )
+                if (selected) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 1.dp)
+                            .size(width = 28.dp, height = 2.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(emphasisColor)
+                            .testTag("recent_playback_tab_${tab.testTag}_indicator")
+                    )
+                }
             }
         }
     }
@@ -459,17 +493,22 @@ private fun RecentPlaybackContent(
         is RecentPlaybackContentState.LocalContent -> {
             LazyColumn(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 0.dp,
+                    bottom = 24.dp
+                )
             ) {
                 itemsIndexed(
                     items = contentState.items,
                     key = { _, item -> item.id }
-                ) { _, item ->
+                ) { index, item ->
                     RecentLocalPlaybackRow(
+                        position = index + 1,
                         item = item,
                         onClick = { onLocalItemClick(item) },
                         onOpenDetail = { onLocalItemOpenDetail(item) },
+                        showDivider = index < contentState.items.lastIndex,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("recent_local_item_${item.id}")
@@ -481,17 +520,22 @@ private fun RecentPlaybackContent(
         is RecentPlaybackContentState.SongContent -> {
             LazyColumn(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 0.dp,
+                    bottom = 24.dp
+                )
             ) {
                 itemsIndexed(
                     items = contentState.items,
                     key = { _, item -> item.id }
-                ) { _, item ->
+                ) { index, item ->
                     RecentSongRow(
+                        position = index + 1,
                         item = item,
                         onClick = { onSongClick(item) },
                         onOpenDetail = { onSongOpenDetail(item) },
+                        showDivider = index < contentState.items.lastIndex,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("recent_songs_item_${item.id}")
@@ -503,13 +547,18 @@ private fun RecentPlaybackContent(
         is RecentPlaybackContentState.GenericContent -> {
             LazyColumn(
                 modifier = modifier.testTag("recent_playback_list_${selectedTab.testTag}"),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 0.dp,
+                    bottom = 24.dp
+                )
             ) {
                 itemsIndexed(
                     items = contentState.items,
                     key = { _, item -> item.id }
                 ) { index, item ->
                     RecentPlaybackGenericRow(
+                        position = index + 1,
                         item = item,
                         showDivider = index != contentState.items.lastIndex,
                         modifier = Modifier
@@ -524,165 +573,161 @@ private fun RecentPlaybackContent(
 
 @Composable
 private fun RecentLocalPlaybackRow(
+    position: Int,
     item: RecentLocalPlaybackItemUiModel,
     onClick: () -> Unit,
     onOpenDetail: () -> Unit,
+    showDivider: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    RecentTrackRow(
+        position = position,
+        title = item.title,
+        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
+        imageUrl = item.imageUrl,
+        durationMs = item.durationMs,
+        positionTestTag = "recent_local_item_index_${item.id}",
+        detailTestTag = "recent_local_item_more_${item.id}",
+        onClick = onClick,
+        onOpenDetail = onOpenDetail,
+        showDivider = showDivider,
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(54.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (!item.imageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = item.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Rounded.LibraryMusic,
-                            contentDescription = null
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = item.artistText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val metaText = item.albumTitle?.takeIf { it.isNotBlank() }
-                    ?: item.durationMs.takeIf { it > 0 }?.let { formatDurationLabel(it) }
-                if (metaText != null) {
-                    Text(
-                        text = metaText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            RecentDetailEntryButton(
-                testTag = "recent_local_item_more_${item.id}",
-                onClick = onOpenDetail
-            )
-        }
-    }
+    )
 }
 
 @Composable
 private fun RecentSongRow(
+    position: Int,
     item: RecentSongItemUiModel,
     onClick: () -> Unit,
     onOpenDetail: () -> Unit,
+    showDivider: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    RecentTrackRow(
+        position = position,
+        title = item.title,
+        metadata = recentTrackMetadata(item.artistText, item.albumTitle),
+        imageUrl = item.imageUrl,
+        durationMs = item.durationMs,
+        positionTestTag = "recent_songs_item_index_${item.id}",
+        detailTestTag = "recent_songs_item_more_${item.id}",
+        onClick = onClick,
+        onOpenDetail = onOpenDetail,
+        showDivider = showDivider,
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
-        )
-    ) {
+    )
+}
+
+@Composable
+private fun RecentTrackRow(
+    position: Int,
+    title: String,
+    metadata: String,
+    imageUrl: String?,
+    durationMs: Long,
+    positionTestTag: String,
+    detailTestTag: String,
+    onClick: () -> Unit,
+    onOpenDetail: () -> Unit,
+    showDivider: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    val emphasisColor = recentPlaybackEmphasisColor()
+    Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = modifier
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(
+                text = formatRecentPosition(position),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (position <= 3) {
+                    emphasisColor
+                } else {
+                    visualTokens.textMuted
+                },
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .width(24.dp)
+                    .testTag(positionTestTag)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Surface(
-                modifier = Modifier.size(54.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = visualTokens.surfaceHighlight,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (!item.imageUrl.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!imageUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = item.imageUrl,
+                            model = imageUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Rounded.LibraryMusic,
-                            contentDescription = null
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = visualTokens.accentStrong,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
             }
-
-            Column(modifier = Modifier.weight(1f)) {
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = item.artistText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = metadata,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = visualTokens.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                item.albumTitle?.let { albumTitle ->
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier.width(44.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (durationMs > 0L) {
                     Text(
-                        text = albumTitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = formatDurationLabel(durationMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = visualTokens.textSecondary,
+                        modifier = Modifier.testTag("${positionTestTag}_duration")
                     )
                 }
             }
-
             RecentDetailEntryButton(
-                testTag = "recent_songs_item_more_${item.id}",
+                testTag = detailTestTag,
                 onClick = onOpenDetail
+            )
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 100.dp, end = 20.dp),
+                color = visualTokens.dividerSubtle,
+                thickness = 1.dp
             )
         }
     }
@@ -693,21 +738,43 @@ private fun RecentDetailEntryButton(
     testTag: String,
     onClick: () -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .size(48.dp)
             .testTag(testTag)
     ) {
         Icon(
             imageVector = Icons.Rounded.MoreHoriz,
             contentDescription = "查看歌曲详情",
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            modifier = Modifier.size(20.dp),
+            tint = visualTokens.textSecondary
         )
     }
+}
+
+private fun formatRecentPosition(position: Int): String {
+    return position.coerceAtLeast(0).toString().padStart(2, '0')
+}
+
+@Composable
+private fun recentPlaybackEmphasisColor(): Color {
+    return if (isSystemInDarkTheme()) {
+        PlayerLiteVisualTheme.colors.accentStrong
+    } else {
+        Color(0xFFD32F2F)
+    }
+}
+
+private fun recentTrackMetadata(
+    artistText: String,
+    albumTitle: String?
+): String {
+    return listOfNotNull(
+        artistText.takeIf { it.isNotBlank() },
+        albumTitle?.takeIf { it.isNotBlank() }
+    ).joinToString(" · ")
 }
 
 private fun formatDurationLabel(durationMs: Long): String {
@@ -719,107 +786,114 @@ private fun formatDurationLabel(durationMs: Long): String {
 
 @Composable
 private fun RecentPlaybackGenericRow(
+    position: Int,
     item: RecentPlaybackListItemUiModel,
     showDivider: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.background,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (item.imageUrl.isNullOrBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.LibraryMusic,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+    val visualTokens = PlayerLiteVisualTheme.colors
+    val emphasisColor = recentPlaybackEmphasisColor()
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = formatRecentPosition(position),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (position <= 3) {
+                    emphasisColor
                 } else {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .testTag("recent_playback_cover_${item.id}"),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = item.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    val metaText = listOfNotNull(item.badge, item.meta)
-                        .joinToString(" · ")
-                        .takeIf { it.isNotBlank() }
-                    if (metaText != null) {
-                        Text(
-                            text = metaText,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
+                    visualTokens.textMuted
+                },
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .width(24.dp)
+                    .testTag("recent_playback_item_index_${item.id}")
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = visualTokens.surfaceHighlight,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
                 Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .testTag("recent_playback_more_placeholder_${item.id}"),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreHoriz,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    if (item.imageUrl.isNullOrBlank()) {
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = visualTokens.accentStrong,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = item.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("recent_playback_cover_${item.id}"),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val supportingText = listOfNotNull(
+                    item.subtitle.takeIf { it.isNotBlank() },
+                    item.badge?.takeIf { it.isNotBlank() },
+                    item.meta?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+                if (supportingText.isNotBlank()) {
+                    Text(
+                        text = supportingText,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                        color = visualTokens.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            if (showDivider) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 74.dp, end = 4.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("recent_playback_more_placeholder_${item.id}"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreHoriz,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = visualTokens.textMuted
                 )
             }
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 100.dp, end = 20.dp),
+                thickness = 1.dp,
+                color = visualTokens.dividerSubtle
+            )
         }
     }
 }

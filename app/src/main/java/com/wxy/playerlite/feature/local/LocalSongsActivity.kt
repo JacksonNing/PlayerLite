@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,21 +30,25 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
 import com.wxy.playerlite.feature.song.SongDetailActivity
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
@@ -192,31 +198,49 @@ internal fun LocalSongsScreen(
     onSongInsertNext: (LocalSongEntry) -> Unit,
     onSongOpenDetail: (LocalSongEntry) -> Unit
 ) {
+    val visualTokens = PlayerLiteVisualTheme.colors
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = visualTokens.canvas,
         topBar = {
-            TopAppBar(
-                title = { Text("本地歌曲") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "返回"
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "本地歌曲",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onScan,
-                        modifier = Modifier.testTag("local_songs_scan_action")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "扫描本地歌曲"
-                        )
-                    }
-                }
-            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "返回"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = onScan,
+                            modifier = Modifier.testTag("local_songs_scan_action")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = "扫描本地歌曲"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = visualTokens.canvas,
+                        scrolledContainerColor = visualTokens.canvas
+                    )
+                )
+                HorizontalDivider(
+                    color = visualTokens.dividerSubtle,
+                    thickness = 1.dp
+                )
+            }
         }
     ) { innerPadding ->
         PullToRefreshBox(
@@ -268,108 +292,180 @@ internal fun LocalSongsScreen(
                             .fillMaxSize()
                             .padding(innerPadding)
                             .testTag("local_songs_list"),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            bottom = 24.dp
+                        )
                     ) {
                         item {
-                            Button(
-                                onClick = onPlayAll,
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .testTag("local_songs_play_all")
+                                    .heightIn(min = 64.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("播放全部")
+                                Text(
+                                    text = "${state.songs.size} 首歌曲",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = visualTokens.textSecondary,
+                                    modifier = Modifier.testTag("local_songs_song_count")
+                                )
+                                TextButton(
+                                    onClick = onPlayAll,
+                                    modifier = Modifier
+                                        .heightIn(min = 48.dp)
+                                        .testTag("local_songs_play_all"),
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PlayCircleOutline,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.size(6.dp))
+                                    Text(
+                                        text = "播放全部",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             }
+                            HorizontalDivider(color = visualTokens.dividerSubtle)
                         }
                         itemsIndexed(
                             items = state.songs,
                             key = { _, item -> item.id }
                         ) { index, item ->
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onSongClick(index) }
-                                    .testTag("local_songs_item_${item.id}"),
-                                shape = RoundedCornerShape(20.dp),
-                                tonalElevation = 2.dp,
-                                shadowElevation = 0.dp
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.size(40.dp),
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.LibraryMusic,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            text = item.title,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = "${item.artist} · ${item.album}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    var menuExpanded by remember(item.id) { mutableStateOf(false) }
-                                    Box {
-                                        IconButton(
-                                            onClick = { menuExpanded = true },
-                                            modifier = Modifier.testTag("local_songs_item_more_${item.id}")
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.MoreVert,
-                                                contentDescription = "更多操作"
-                                            )
-                                        }
-                                        DropdownMenu(
-                                            expanded = menuExpanded,
-                                            onDismissRequest = { menuExpanded = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text("下一首播放") },
-                                                onClick = {
-                                                    menuExpanded = false
-                                                    onSongInsertNext(item)
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("查看歌曲详情") },
-                                                onClick = {
-                                                    menuExpanded = false
-                                                    onSongOpenDetail(item)
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
+                            LocalSongRow(
+                                item = item,
+                                onClick = { onSongClick(index) },
+                                onInsertNext = { onSongInsertNext(item) },
+                                onOpenDetail = { onSongOpenDetail(item) }
+                            )
+                            if (index < state.songs.lastIndex) {
+                                HorizontalDivider(color = visualTokens.dividerSubtle)
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LocalSongRow(
+    item: LocalSongEntry,
+    onClick: () -> Unit,
+    onInsertNext: () -> Unit,
+    onOpenDetail: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val visualTokens = PlayerLiteVisualTheme.colors
+    var menuExpanded by remember(item.id) { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 84.dp)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp)
+            .testTag("local_songs_item_${item.id}"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            modifier = Modifier.size(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = visualTokens.surfaceHighlight,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = visualTokens.accentStrong,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "${item.artist} · ${item.album}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = visualTokens.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = formatLocalSongDuration(item.durationMs),
+            style = MaterialTheme.typography.bodyMedium,
+            color = visualTokens.textSecondary,
+            modifier = Modifier.testTag("local_songs_item_duration_${item.id}")
+        )
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("local_songs_item_more_${item.id}")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "更多操作",
+                    tint = visualTokens.textSecondary
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("下一首播放") },
+                    onClick = {
+                        menuExpanded = false
+                        onInsertNext()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("查看歌曲详情") },
+                    onClick = {
+                        menuExpanded = false
+                        onOpenDetail()
+                    }
+                )
+            }
+        }
+    }
+}
+
+internal fun formatLocalSongDuration(durationMs: Long): String {
+    val totalSeconds = durationMs.coerceAtLeast(0L) / 1_000L
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    val paddedSeconds = seconds.toString().padStart(2, '0')
+    return if (hours > 0L) {
+        "$hours:${minutes.toString().padStart(2, '0')}:$paddedSeconds"
+    } else {
+        "$minutes:$paddedSeconds"
     }
 }
 

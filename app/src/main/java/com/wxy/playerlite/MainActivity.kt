@@ -166,6 +166,7 @@ class MainActivity : ComponentActivity() {
                             MainTab.HOME -> {
                                 HomeOverviewScreen(
                                     overviewState = homeState,
+                                    avatarUrl = userState.avatarUrl,
                                     bottomContentPadding = if (state.hasSelection) {
                                         HomeChromeLayoutSpec.homeOverviewScrollBottomPadding
                                     } else {

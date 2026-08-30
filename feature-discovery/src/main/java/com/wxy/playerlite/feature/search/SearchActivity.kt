@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -45,8 +45,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -68,7 +67,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -179,7 +183,7 @@ internal fun SearchScreen(
                 .fillMaxSize()
                 .background(SEARCH_PAGE_BACKGROUND_BRUSH)
                 .padding(innerPadding)
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 20.dp)
         ) {
             SearchTopBar(
                 query = state.query,
@@ -190,7 +194,15 @@ internal fun SearchScreen(
                 modifier = Modifier.testTag("search_top_bar")
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(
+                modifier = Modifier.height(
+                    when (state.pageMode) {
+                        SearchPageMode.HOT -> 24.dp
+                        SearchPageMode.SUGGEST -> 22.dp
+                        SearchPageMode.RESULT -> 10.dp
+                    }
+                )
+            )
 
             if (state.pageMode == SearchPageMode.HOT && state.historyKeywords.isNotEmpty()) {
                 SearchPinnedHistorySection(
@@ -200,10 +212,9 @@ internal fun SearchScreen(
                     onClearHistory = onClearHistory,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(if (usesExpandedTypography) 96.dp else 88.dp)
                         .testTag("search_history_pinned")
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (usesExpandedTypography) 24.dp else 20.dp))
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -218,7 +229,9 @@ internal fun SearchScreen(
 
                     SearchPageMode.SUGGEST -> {
                         SearchSuggestContent(
+                            query = state.query,
                             state = state.suggestState,
+                            onSubmitSearch = onSubmitSearch,
                             onSuggestionClick = onSuggestionClick,
                             onRetry = onRetry
                         )
@@ -254,37 +267,28 @@ private fun SearchTopBar(
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Surface(
-            shape = CircleShape,
-            tonalElevation = 0.dp,
-            color = SEARCH_PANEL_MUTED_COLOR,
-            border = BorderStroke(
-                width = 1.dp,
-                color = SEARCH_DIVIDER_COLOR
-            )
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(44.dp)
+                .testTag("search_back_button")
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(if (usesExpandedTypography) 42.dp else 40.dp)
-                    .testTag("search_back_button")
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "返回",
-                    modifier = Modifier.size(if (usesExpandedTypography) 20.dp else 19.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "返回",
+                tint = SEARCH_TEXT_SECONDARY,
+                modifier = Modifier.size(if (usesExpandedTypography) 22.dp else 20.dp)
+            )
         }
 
         Surface(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = if (usesExpandedTypography) 52.dp else 48.dp)
+                .height(if (usesExpandedTypography) 52.dp else 48.dp)
                 .testTag("search_input_container"),
-            shape = RoundedCornerShape(if (usesExpandedTypography) 26.dp else 24.dp),
+            shape = RoundedCornerShape(18.dp),
             color = SEARCH_PANEL_COLOR,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
@@ -295,13 +299,10 @@ private fun SearchTopBar(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 14.dp,
-                        vertical = if (usesExpandedTypography) 13.dp else 12.dp
-                    ),
+                    .fillMaxSize()
+                    .padding(start = 16.dp, end = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Search,
@@ -344,6 +345,21 @@ private fun SearchTopBar(
                         innerTextField()
                     }
                 )
+                if (query.isNotBlank()) {
+                    IconButton(
+                        onClick = { onQueryChanged("") },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("search_input_clear")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "清空搜索内容",
+                            tint = SEARCH_TEXT_MUTED,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -359,34 +375,27 @@ private fun SearchPinnedHistorySection(
 ) {
     val usesExpandedTypography = usesExpandedSearchTypography()
     Column(
-        modifier = modifier.padding(top = 2.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(if (usesExpandedTypography) 12.dp else 10.dp)
     ) {
         SearchSectionTitle(
-            title = "历史搜索",
-            icon = {
-                Icon(
-                    imageVector = Icons.Rounded.History,
-                    contentDescription = null,
-                    tint = SEARCH_ACCENT_MUTED_COLOR,
-                    modifier = Modifier.size(17.dp)
-                )
-            },
+            title = "最近搜索",
             action = {
-                Text(
-                    text = "清空",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = SEARCH_PRIMARY_RED,
-                    fontWeight = FontWeight.SemiBold,
+                IconButton(
+                    onClick = onClearHistory,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .clickable(onClick = onClearHistory)
-                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                        .size(40.dp)
                         .testTag("search_history_clear_all")
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.DeleteOutline,
+                        contentDescription = "清空最近搜索",
+                        tint = SEARCH_TEXT_SECONDARY,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
             },
             modifier = Modifier
-                .padding(horizontal = 4.dp)
                 .testTag("search_history_section")
         )
         LazyRow(
@@ -448,19 +457,11 @@ private fun SearchHotContent(
                     .fillMaxSize()
                     .testTag("search_hot_scroll_container"),
                 contentPadding = PaddingValues(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item(key = "hot_section") {
                     SearchSectionTitle(
-                        title = "推荐搜索",
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Rounded.LocalFireDepartment,
-                                contentDescription = null,
-                                tint = SEARCH_PRIMARY_RED,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
+                        title = "热搜榜",
                         modifier = Modifier.testTag("search_hot_section")
                     )
                 }
@@ -477,55 +478,82 @@ private fun SearchHotContent(
 
 @Composable
 private fun SearchSuggestContent(
+    query: String,
     state: SearchSuggestUiState,
+    onSubmitSearch: () -> Unit,
     onSuggestionClick: (SearchSuggestionUiModel) -> Unit,
     onRetry: () -> Unit
 ) {
-    when (state) {
-        SearchSuggestUiState.Idle -> Unit
-
-        SearchSuggestUiState.Loading -> {
-            SearchStatusCard(
-                title = "搜索建议加载中",
-                subtitle = "正在为你匹配更贴近的关键词。"
-            ) {
-                CircularProgressIndicator()
-            }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("search_suggestion_list"),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item(key = "suggestion_section") {
+            SearchSectionTitle(
+                title = "搜索建议",
+                modifier = Modifier.testTag("search_suggestion_section")
+            )
         }
-
-        is SearchSuggestUiState.Error -> {
-            SearchStatusCard(
-                title = "搜索建议加载失败",
-                subtitle = state.message
-            ) {
-                RetryButton(onRetry = onRetry)
-            }
+        item(key = "suggestion_section_spacing") {
+            Spacer(modifier = Modifier.height(8.dp))
         }
-
-        is SearchSuggestUiState.Content -> {
-            if (state.items.isEmpty()) {
-                SearchStatusCard(
-                    title = "暂无搜索建议",
-                    subtitle = "继续输入更多关键词，或直接发起搜索。"
+        if (query.isNotBlank()) {
+            item(key = "suggestion_submit") {
+                SearchSuggestionSubmitRow(
+                    query = query,
+                    onClick = onSubmitSearch
                 )
-                return
             }
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("search_suggestion_list"),
-                contentPadding = PaddingValues(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(
-                    items = state.items,
-                    key = { _, item -> item.keyword }
-                ) { index, item ->
-                    SearchSuggestionCard(
-                        keyword = item.keyword,
-                        modifier = Modifier.testTag("search_suggestion_item_$index"),
-                        onClick = { onSuggestionClick(item) }
-                    )
+        }
+
+        when (state) {
+            SearchSuggestUiState.Idle -> Unit
+
+            SearchSuggestUiState.Loading -> {
+                item(key = "suggestion_loading") {
+                    SearchStatusCard(
+                        title = "搜索建议加载中",
+                        subtitle = "正在为你匹配更贴近的关键词。"
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+
+            is SearchSuggestUiState.Error -> {
+                item(key = "suggestion_error") {
+                    SearchStatusCard(
+                        title = "搜索建议加载失败",
+                        subtitle = state.message
+                    ) {
+                        RetryButton(onRetry = onRetry)
+                    }
+                }
+            }
+
+            is SearchSuggestUiState.Content -> {
+                if (state.items.isEmpty()) {
+                    item(key = "suggestion_empty") {
+                        SearchStatusCard(
+                            title = "暂无搜索建议",
+                            subtitle = "继续输入更多关键词，或直接发起搜索。"
+                        )
+                    }
+                } else {
+                    itemsIndexed(
+                        items = state.items,
+                        key = { _, item -> item.keyword }
+                    ) { index, item ->
+                        SearchSuggestionCard(
+                            query = query,
+                            keyword = item.keyword,
+                            showDivider = index != state.items.lastIndex,
+                            modifier = Modifier.testTag("search_suggestion_item_$index"),
+                            onClick = { onSuggestionClick(item) }
+                        )
+                    }
                 }
             }
         }
@@ -570,7 +598,7 @@ private fun SearchResultContent(
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         SearchResultTypeRow(
             selectedResultType = selectedResultType,
@@ -696,8 +724,8 @@ private fun SearchResultTypeRow(
             .fillMaxWidth()
             .testTag("search_result_type_row"),
         state = listState,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 4.dp, end = 8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(bottom = 3.dp, end = 8.dp)
     ) {
         items(
             items = availableResultTypes,
@@ -742,7 +770,11 @@ private fun SearchResultTypeChip(
             .testTag("search_result_type_${type.name.lowercase()}")
             .width(SEARCH_RESULT_TYPE_CHIP_WIDTH)
             .height(SEARCH_RESULT_TYPE_CHIP_HEIGHT)
-            .clickable(onClick = onClick),
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.Tab
+            ),
         shape = RoundedCornerShape(0.dp),
         color = Color.Transparent,
         tonalElevation = 0.dp,
@@ -773,7 +805,7 @@ private fun SearchResultTypeChip(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 1.dp)
-                        .size(width = 38.dp, height = 3.dp)
+                        .size(width = 28.dp, height = 2.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(SEARCH_PRIMARY_RED)
                         .testTag("search_result_type_${type.name.lowercase()}_indicator")
@@ -785,7 +817,7 @@ private fun SearchResultTypeChip(
 
 private fun resolveSearchResultTypeLabelOpticalOffset(type: SearchResultType) =
     if (type.displayLabel.all { it.code < 128 && it.isLetter() }) {
-        1.dp
+        0.5.dp
     } else {
         0.dp
     }
@@ -795,36 +827,26 @@ private fun SearchHotBoard(
     items: List<SearchHotKeywordUiModel>,
     onHotKeywordClick: (SearchHotKeywordUiModel) -> Unit
 ) {
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("search_hot_board"),
-        shape = RoundedCornerShape(22.dp),
-        color = SEARCH_PANEL_COLOR,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = SEARCH_DIVIDER_COLOR
-        )
+            .testTag("search_hot_board")
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            items.forEachIndexed { index, item ->
-                SearchHotBoardRow(
-                    index = index,
-                    item = item,
-                    modifier = Modifier.testTag(
-                        if (index == 0) "search_hot_list" else "search_hot_item_$index"
-                    ),
-                    onClick = { onHotKeywordClick(item) }
+        items.forEachIndexed { index, item ->
+            SearchHotBoardRow(
+                index = index,
+                item = item,
+                modifier = Modifier.testTag(
+                    if (index == 0) "search_hot_list" else "search_hot_item_$index"
+                ),
+                onClick = { onHotKeywordClick(item) }
+            )
+            if (index != items.lastIndex) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 48.dp),
+                    thickness = 1.dp,
+                    color = SEARCH_DIVIDER_COLOR
                 )
-                if (index != items.lastIndex) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 58.dp, end = 14.dp),
-                        thickness = 1.dp,
-                        color = SEARCH_DIVIDER_COLOR
-                    )
-                }
             }
         }
     }
@@ -852,13 +874,13 @@ private fun SearchHotBoardRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(if (usesExpandedTypography) 36.dp else 32.dp)
+                .width(if (usesExpandedTypography) 38.dp else 34.dp)
                 .testTag("search_hot_rank_$index"),
             contentAlignment = Alignment.Center
         ) {
@@ -918,7 +940,7 @@ private fun SearchHistoryChip(
     val usesExpandedTypography = usesExpandedSearchTypography()
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = SEARCH_PANEL_MUTED_COLOR,
         tonalElevation = 0.dp,
         border = BorderStroke(
@@ -951,14 +973,14 @@ private fun SearchHistoryChip(
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(30.dp)
                     .testTag("search_history_remove_$index")
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "移除历史记录",
                     tint = SEARCH_TEXT_SECONDARY,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
@@ -968,7 +990,7 @@ private fun SearchHistoryChip(
 @Composable
 private fun SearchSectionTitle(
     title: String,
-    icon: @Composable RowScope.() -> Unit,
+    icon: (@Composable RowScope.() -> Unit)? = null,
     action: (@Composable RowScope.() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -980,11 +1002,14 @@ private fun SearchSectionTitle(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        icon()
+        icon?.invoke(this)
         Text(
             text = title,
             style = if (usesExpandedTypography) {
-                MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp)
+                MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp
+                )
             } else {
                 MaterialTheme.typography.titleSmall
             },
@@ -1011,7 +1036,7 @@ private fun SearchResultCard(
             .fillMaxWidth()
             .testTag("search_result_card_${item.id}")
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(0.dp),
         color = Color.Transparent,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -1021,8 +1046,8 @@ private fun SearchResultCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (item.coverUrl.isNullOrBlank()) {
@@ -1031,7 +1056,7 @@ private fun SearchResultCard(
                             .size(56.dp)
                             .background(
                                 color = SEARCH_ACCENT_SOFT_COLOR,
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1045,11 +1070,13 @@ private fun SearchResultCard(
                     AsyncImage(
                         model = item.coverUrl,
                         contentDescription = null,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(56.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(
                                 color = SEARCH_PANEL_MUTED_COLOR,
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(12.dp)
                             )
                             .testTag("search_result_cover_${item.id}")
                     )
@@ -1094,18 +1121,16 @@ private fun SearchResultCard(
                     }
                 }
                 if (item is SearchResultUiModel.Song) {
-                    Box(
+                    IconButton(
+                        onClick = { onSongOverflowClick(item) },
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .clickable { onSongOverflowClick(item) }
+                            .size(48.dp)
                             .testTag("search_result_more_${item.id}"),
-                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.MoreHoriz,
                             contentDescription = "查看歌曲详情",
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = SEARCH_TEXT_SECONDARY
                         )
                     }
@@ -1113,7 +1138,7 @@ private fun SearchResultCard(
             }
             if (showDivider) {
                 HorizontalDivider(
-                    modifier = Modifier.padding(start = 74.dp, end = 4.dp),
+                    modifier = Modifier.padding(start = 68.dp),
                     thickness = 1.dp,
                     color = SEARCH_DIVIDER_COLOR
                 )
@@ -1184,48 +1209,77 @@ private fun RetryButton(onRetry: () -> Unit) {
 }
 
 @Composable
+private fun SearchSuggestionSubmitRow(
+    query: String,
+    onClick: () -> Unit
+) {
+    val accent = SEARCH_PRIMARY_RED
+    SearchSuggestionRow(
+        text = buildAnnotatedString {
+            append("搜索“")
+            val queryStart = length
+            append(query)
+            addStyle(
+                style = SpanStyle(
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                start = queryStart,
+                end = length
+            )
+            append("”")
+        },
+        showDivider = true,
+        onClick = onClick,
+        modifier = Modifier.testTag("search_suggestion_submit")
+    )
+}
+
+@Composable
 private fun SearchSuggestionCard(
+    query: String,
     keyword: String,
+    showDivider: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    SearchSuggestionRow(
+        text = highlightedSuggestionText(
+            keyword = keyword,
+            query = query,
+            accent = SEARCH_PRIMARY_RED
+        ),
+        showDivider = showDivider,
+        onClick = onClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun SearchSuggestionRow(
+    text: AnnotatedString,
+    showDivider: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val usesExpandedTypography = usesExpandedSearchTypography()
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = SEARCH_PANEL_MUTED_COLOR,
-        tonalElevation = 0.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = SEARCH_DIVIDER_COLOR
-        )
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(
-                        color = SEARCH_ACCENT_SOFT_COLOR,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = SEARCH_PRIMARY_RED,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Rounded.Search,
+                contentDescription = null,
+                tint = SEARCH_PRIMARY_RED,
+                modifier = Modifier.size(20.dp)
+            )
             Text(
-                text = keyword,
+                text = text,
                 style = if (usesExpandedTypography) {
                     MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
                 } else {
@@ -1234,6 +1288,34 @@ private fun SearchSuggestionCard(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 32.dp),
+                thickness = 1.dp,
+                color = SEARCH_DIVIDER_COLOR
+            )
+        }
+    }
+}
+
+private fun highlightedSuggestionText(
+    keyword: String,
+    query: String,
+    accent: Color
+): AnnotatedString {
+    val matchStart = keyword.indexOf(query, ignoreCase = true)
+    return buildAnnotatedString {
+        append(keyword)
+        if (query.isNotBlank() && matchStart >= 0) {
+            addStyle(
+                style = SpanStyle(
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                start = matchStart,
+                end = matchStart + query.length
             )
         }
     }
@@ -1293,8 +1375,8 @@ private val SEARCH_PAGE_BACKGROUND_BRUSH: Brush
         }
     }
 
-internal val SEARCH_RESULT_TYPE_CHIP_HEIGHT = 36.dp
-internal val SEARCH_RESULT_TYPE_CHIP_WIDTH = 56.dp
+internal val SEARCH_RESULT_TYPE_CHIP_HEIGHT = 48.dp
+internal val SEARCH_RESULT_TYPE_CHIP_WIDTH = 52.dp
 private val SEARCH_PANEL_COLOR: Color
     @Composable
     get() = SearchFeatureVisualTheme.colors.panel

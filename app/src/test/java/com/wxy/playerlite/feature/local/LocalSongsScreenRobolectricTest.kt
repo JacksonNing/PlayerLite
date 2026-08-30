@@ -56,9 +56,16 @@ class LocalSongsScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("local_songs_scan_action").assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag("local_songs_song_count").assertIsDisplayed()
         composeRule.onNodeWithTag("local_songs_play_all").assertIsDisplayed().assertHasClickAction()
         composeRule.onNodeWithTag("local_songs_item_local-1").assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag(
+            testTag = "local_songs_item_duration_local-1",
+            useUnmergedTree = true
+        ).assertExists()
         composeRule.onNodeWithTag("local_songs_item_more_local-1").assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithText("1 首歌曲").assertIsDisplayed()
+        composeRule.onNodeWithText("4:29", useUnmergedTree = true).assertExists()
         composeRule.onNodeWithText("晴天").assertIsDisplayed()
 
         composeRule.onNodeWithTag("local_songs_scan_action").performClick()
@@ -135,5 +142,12 @@ class LocalSongsScreenRobolectricTest {
         }
 
         composeRule.onNodeWithText("还没有扫描到本地歌曲").assertIsDisplayed()
+    }
+
+    @Test
+    fun formatLocalSongDuration_shouldRenderMinuteAndHourFormats() {
+        assertEquals("0:00", formatLocalSongDuration(0L))
+        assertEquals("4:29", formatLocalSongDuration(269_000L))
+        assertEquals("1:01:01", formatLocalSongDuration(3_661_000L))
     }
 }

@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
+import java.util.Calendar
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -79,7 +80,9 @@ fun HomeOverviewScreen(
     onRetry: () -> Unit,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
-    onRefresh: () -> Unit = onRetry
+    onRefresh: () -> Unit = onRetry,
+    avatarUrl: String? = null,
+    currentHour: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 ) {
     val visualTokens = PlayerLiteVisualTheme.colors
     val navigationBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -107,7 +110,9 @@ fun HomeOverviewScreen(
             ) {
                 item(key = "home_header") {
                     HomeHeader(
+                        greeting = homeGreetingForHour(currentHour),
                         keyword = overviewState.currentSearchKeyword,
+                        avatarUrl = avatarUrl,
                         onSearchClick = onSearchClick
                     )
                 }
@@ -179,7 +184,9 @@ fun HomeOverviewScreen(
 
 @Composable
 private fun HomeHeader(
+    greeting: String,
     keyword: String,
+    avatarUrl: String?,
     onSearchClick: () -> Unit
 ) {
     val visualTokens = PlayerLiteVisualTheme.colors
@@ -196,7 +203,7 @@ private fun HomeHeader(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = "晚上好",
+                    text = greeting,
                     style = MaterialTheme.typography.headlineLarge,
                     fontSize = 34.sp,
                     lineHeight = 40.sp,
@@ -212,7 +219,9 @@ private fun HomeHeader(
                 )
             }
             Surface(
-                modifier = Modifier.size(HomeDiscoveryLayoutSpec.headerAvatarSize),
+                modifier = Modifier
+                    .size(HomeDiscoveryLayoutSpec.headerAvatarSize)
+                    .testTag("home_header_avatar"),
                 shape = CircleShape,
                 color = visualTokens.surfaceHighlight,
                 tonalElevation = 0.dp,
@@ -223,8 +232,21 @@ private fun HomeHeader(
                         imageVector = Icons.Rounded.AccountCircle,
                         contentDescription = null,
                         tint = visualTokens.accentSupport,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier
+                            .size(30.dp)
+                            .testTag("home_header_avatar_placeholder")
                     )
+                    if (!avatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = "用户头像",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .testTag("home_header_avatar_image"),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
         }
@@ -233,6 +255,14 @@ private fun HomeHeader(
             keyword = keyword,
             onClick = onSearchClick
         )
+    }
+}
+
+internal fun homeGreetingForHour(hour: Int): String {
+    return when (hour) {
+        in 5..11 -> "早上好"
+        in 12..17 -> "下午好"
+        else -> "晚上好"
     }
 }
 

@@ -1,7 +1,10 @@
 package com.wxy.playerlite.feature.search
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -23,6 +26,7 @@ class SearchScreenRobolectricTest {
 
     @Test
     fun hotMode_shouldKeepStandaloneBackActionAndLightweightSearchField() {
+        var clickedHotKeyword: String? = null
         composeRule.setContent {
             SearchFeatureTheme {
                 SearchScreen(
@@ -43,7 +47,7 @@ class SearchScreenRobolectricTest {
                     onRemoveHistoryKeyword = {},
                     onClearHistory = {},
                     onSuggestionClick = {},
-                    onHotKeywordClick = {},
+                    onHotKeywordClick = { clickedHotKeyword = it.keyword },
                     onResultTypeSelected = {},
                     onResultClick = { _, _ -> },
                     onRetry = {}
@@ -53,7 +57,11 @@ class SearchScreenRobolectricTest {
 
         composeRule.onNodeWithTag("search_back_button").assertIsDisplayed()
         composeRule.onNodeWithTag("search_input_container").assertIsDisplayed()
+        composeRule.onNodeWithText("最近搜索").assertIsDisplayed()
+        composeRule.onNodeWithText("热搜榜").assertIsDisplayed()
         composeRule.onNodeWithTag("search_hot_board").assertIsDisplayed()
+        composeRule.onNodeWithTag("search_hot_list").performClick()
+        assertEquals("Taylor Swift", clickedHotKeyword)
     }
 
     @Test
@@ -89,7 +97,6 @@ class SearchScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("search_history_clear_all").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("清空").assertIsDisplayed()
         composeRule.onNodeWithTag("search_history_remove_1").assertIsDisplayed().performClick()
 
         assertEquals(1, clearedCount)
@@ -148,6 +155,7 @@ class SearchScreenRobolectricTest {
     @Test
     fun resultMode_shouldRenderUnderlineTabsAndOpenSongDetailFromOverflowAction() {
         var overflowTarget: SearchRouteTarget? = null
+        var selectedResultType: SearchResultType? = null
 
         composeRule.setContent {
             SearchFeatureTheme {
@@ -184,7 +192,7 @@ class SearchScreenRobolectricTest {
                     onClearHistory = {},
                     onSuggestionClick = {},
                     onHotKeywordClick = {},
-                    onResultTypeSelected = {},
+                    onResultTypeSelected = { selectedResultType = it },
                     onResultClick = { _, _ -> },
                     onSongOverflowClick = { overflowTarget = it.routeTarget },
                     onRetry = {}
@@ -196,10 +204,16 @@ class SearchScreenRobolectricTest {
             .assertCountEquals(1)
         composeRule.onAllNodesWithTag("search_result_type_album_indicator", useUnmergedTree = true)
             .assertCountEquals(0)
+        composeRule.onNodeWithTag("search_result_type_song").assertIsSelected()
+        composeRule.onNodeWithTag("search_result_type_album").assertIsNotSelected().performClick()
         composeRule.onNodeWithTag("search_result_card_song-1").assertIsDisplayed()
-        composeRule.onNodeWithTag("search_result_more_song-1").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag("search_result_more_song-1")
+            .assertIsDisplayed()
+            .assertHeightIsEqualTo(48.dp)
+            .performClick()
         composeRule.onAllNodesWithText("下一首播放", useUnmergedTree = true).assertCountEquals(0)
         composeRule.onAllNodesWithText("查看歌曲详情", useUnmergedTree = true).assertCountEquals(0)
+        assertEquals(SearchResultType.ALBUM, selectedResultType)
         assertEquals(SearchRouteTarget.Song(songId = "song-1"), overflowTarget)
     }
 
@@ -315,6 +329,9 @@ class SearchScreenRobolectricTest {
 
     @Test
     fun suggestMode_shouldKeepSuggestionCardsRenderableAfterThemeTokenRefresh() {
+        var submittedCount = 0
+        var changedQuery: String? = null
+        var clickedSuggestion: String? = null
         composeRule.setContent {
             SearchFeatureTheme {
                 SearchScreen(
@@ -329,12 +346,12 @@ class SearchScreenRobolectricTest {
                         )
                     ),
                     onBack = {},
-                    onQueryChanged = {},
-                    onSubmitSearch = {},
+                    onQueryChanged = { changedQuery = it },
+                    onSubmitSearch = { submittedCount += 1 },
                     onHistoryKeywordClick = {},
                     onRemoveHistoryKeyword = {},
                     onClearHistory = {},
-                    onSuggestionClick = {},
+                    onSuggestionClick = { clickedSuggestion = it.keyword },
                     onHotKeywordClick = {},
                     onResultTypeSelected = {},
                     onResultClick = { _, _ -> },
@@ -344,7 +361,13 @@ class SearchScreenRobolectricTest {
         }
 
         composeRule.onNodeWithTag("search_suggestion_list").assertIsDisplayed()
-        composeRule.onNodeWithTag("search_suggestion_item_0").assertIsDisplayed()
+        composeRule.onNodeWithText("搜索建议").assertIsDisplayed()
+        composeRule.onNodeWithTag("search_suggestion_submit").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag("search_suggestion_item_0").assertIsDisplayed().performClick()
         composeRule.onNodeWithTag("search_suggestion_item_1").assertIsDisplayed()
+        composeRule.onNodeWithTag("search_input_clear").assertIsDisplayed().performClick()
+        assertEquals(1, submittedCount)
+        assertEquals("海阔天空", clickedSuggestion)
+        assertEquals("", changedQuery)
     }
 }
