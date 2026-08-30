@@ -106,7 +106,7 @@
 ## Multiagent 默认规则
 
 - 当用户明确允许或要求使用 multiagent 时，可以并行使用 multiagent 推进实现，但写入范围必须清晰隔离，主线程负责整合和最终验证。
-- 对本仓库，所有 spawned multiagents 默认使用 `gpt-5.4`，除非用户明确要求其他模型。
+- 对本仓库，所有 spawned multiagents 默认使用 `gpt-5.6-luna`，推理强度使用 `max`，除非用户明确要求其他模型或推理强度。
 
 ## Commit Message 规范
 
