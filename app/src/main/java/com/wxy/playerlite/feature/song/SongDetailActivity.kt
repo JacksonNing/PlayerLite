@@ -9,10 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wxy.playerlite.R
 import com.wxy.playerlite.core.AppContainer
@@ -21,9 +20,12 @@ import com.wxy.playerlite.feature.player.PlayerActivity
 import com.wxy.playerlite.feature.player.model.PlayerOrientationMode
 import com.wxy.playerlite.feature.album.AlbumDetailActivity
 import com.wxy.playerlite.feature.artist.ArtistDetailActivity
+import com.wxy.playerlite.feature.detail.shouldUseLightStatusBarContent
 import com.wxy.playerlite.feature.playlist.PlaylistDetailActivity
 import com.wxy.playerlite.feature.player.SongWikiRepository
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.designsystem.theme.PlayerLiteContentSystemBarsEffect
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 private const val EXTRA_SOURCE = "song_detail_source"
 private const val EXTRA_ONLINE_SONG_ID = "song_detail_online_song_id"
@@ -78,13 +80,15 @@ class SongDetailActivity : ComponentActivity() {
             )
         }
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
-                SideEffect {
-                    WindowCompat.getInsetsController(window, window.decorView)
-                        .isAppearanceLightStatusBars = false
-                }
+                PlayerLiteContentSystemBarsEffect(
+                    useLightContent = shouldUseLightStatusBarContent(
+                        MaterialTheme.colorScheme.inverseSurface
+                    )
+                )
                 BackHandler(onBack = ::finish)
                 LaunchedEffect(viewModel) {
                     viewModel.events.collect { event ->

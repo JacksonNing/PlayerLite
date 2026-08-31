@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -62,6 +65,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,9 +75,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
 import com.wxy.playerlite.feature.user.AccountVisualStyle
+import com.wxy.playerlite.feature.user.AccountVisualTheme
 import com.wxy.playerlite.feature.user.LoginActivity
+import com.wxy.playerlite.designsystem.theme.ThemeMode
 import com.wxy.playerlite.playback.model.PlaybackAudioQuality
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.text.Charsets
@@ -118,8 +125,9 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
                 BackHandler(onBack = ::finish)
                 SettingsScreen(
@@ -131,6 +139,7 @@ class SettingsActivity : ComponentActivity() {
                     onShowLogoutConfirm = viewModel::showLogoutConfirmation,
                     onDismissLogoutConfirm = viewModel::dismissLogoutConfirmation,
                     onConfirmLogout = viewModel::logout,
+                    onThemeModeChange = viewModel::updateThemeMode,
                     onRefreshCache = viewModel::refreshCache,
                     onClearCache = viewModel::clearManagedCache,
                     onPlaybackCacheLimitChange = viewModel::updatePendingPlaybackCacheLimitMb,
@@ -182,6 +191,7 @@ internal fun SettingsScreen(
     onShowLogoutConfirm: () -> Unit,
     onDismissLogoutConfirm: () -> Unit,
     onConfirmLogout: () -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
     onRefreshCache: () -> Unit,
     onClearCache: () -> Unit,
     onPlaybackCacheLimitChange: (String) -> Unit,
@@ -201,6 +211,7 @@ internal fun SettingsScreen(
     onSetActiveAudioSource: (String) -> Unit,
     onRemoveAudioSource: (String) -> Unit
 ) {
+    var isThemeModeDialogVisible by remember { mutableStateOf(false) }
     var isCacheLimitDialogVisible by remember { mutableStateOf(false) }
     var isPrewarmBudgetDialogVisible by remember { mutableStateOf(false) }
     var isOnlineSourceImportDialogVisible by remember { mutableStateOf(false) }
@@ -267,7 +278,7 @@ internal fun SettingsScreen(
                                 Text(
                                     text = if (isCurrentQuality) "当前默认" else "点击切换",
                                     color = if (isCurrentQuality) {
-                                        AccountVisualStyle.accentTextColor
+                                        AccountVisualTheme.accentText
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
@@ -283,6 +294,16 @@ internal fun SettingsScreen(
                 OutlinedButton(onClick = onDismissPreferredAudioQualityDialog) {
                     Text("取消")
                 }
+            }
+        )
+    }
+    if (isThemeModeDialogVisible) {
+        SettingsThemeModeDialog(
+            selectedMode = state.appearanceState.themeMode,
+            onDismiss = { isThemeModeDialogVisible = false },
+            onModeSelected = { mode ->
+                onThemeModeChange(mode)
+                isThemeModeDialogVisible = false
             }
         )
     }
@@ -375,6 +396,12 @@ internal fun SettingsScreen(
                     )
                 }
                 item {
+                    SettingsAppearanceSection(
+                        state = state.appearanceState,
+                        onThemeModeClick = { isThemeModeDialogVisible = true }
+                    )
+                }
+                item {
                     SettingsPlaybackPreferencesSection(
                         playbackState = state.playbackPreferencesState,
                         onShowPreferredAudioQualityDialog = onShowPreferredAudioQualityDialog,
@@ -417,6 +444,86 @@ internal fun SettingsScreen(
         }
     }
 }
+
+@Composable
+private fun SettingsThemeModeDialog(
+    selectedMode: ThemeMode,
+    onDismiss: () -> Unit,
+    onModeSelected: (ThemeMode) -> Unit
+) {
+    AlertDialog(
+        modifier = Modifier.testTag("settings_theme_mode_dialog"),
+        onDismissRequest = onDismiss,
+        title = { Text("选择主题模式") },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                ThemeMode.entries.forEachIndexed { index, mode ->
+                    if (index > 0) {
+                        HorizontalDivider()
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("settings_theme_mode_option_${mode.testTagSuffix}")
+                            .selectable(
+                                selected = selectedMode == mode,
+                                role = Role.RadioButton,
+                                onClick = { onModeSelected(mode) }
+                            )
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedMode == mode,
+                            onClick = null
+                        )
+                        Text(
+                            text = mode.displayName,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SettingsAppearanceSection(
+    state: SettingsAppearanceUiState,
+    onThemeModeClick: () -> Unit
+) {
+    SettingsGroup(
+        modifier = Modifier.testTag("settings_appearance_section"),
+        title = "外观"
+    ) {
+        SettingsRow(
+            title = "日间 / 夜间模式",
+            subtitle = "选择跟随系统、日间模式或夜间模式",
+            value = state.themeMode.displayName,
+            modifier = Modifier.testTag("settings_theme_mode_trigger"),
+            valueTestTag = "settings_theme_mode_current_value",
+            onClick = onThemeModeClick
+        )
+    }
+}
+
+private val ThemeMode.displayName: String
+    get() = when (this) {
+        ThemeMode.SYSTEM -> "跟随系统"
+        ThemeMode.LIGHT -> "日间模式"
+        ThemeMode.DARK -> "夜间模式"
+    }
+
+private val ThemeMode.testTagSuffix: String
+    get() = wireValue
 
 @Composable
 private fun SettingsGroup(
@@ -487,7 +594,7 @@ private fun SettingsAccountSection(
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         shape = CircleShape,
-                        color = AccountVisualStyle.accentSoftColor,
+                        color = AccountVisualTheme.accentSoft,
                         tonalElevation = 0.dp,
                         shadowElevation = 0.dp
                     ) {
@@ -495,7 +602,7 @@ private fun SettingsAccountSection(
                             Icon(
                                 imageVector = Icons.Rounded.AccountCircle,
                                 contentDescription = null,
-                                tint = AccountVisualStyle.accentColor,
+                                tint = AccountVisualTheme.accent,
                                 modifier = Modifier.size(42.dp)
                             )
                         }
@@ -530,7 +637,7 @@ private fun SettingsAccountSection(
                     enabled = !state.isBusy,
                     modifier = Modifier.testTag("settings_logout_button"),
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = AccountVisualStyle.accentTextColor
+                        contentColor = AccountVisualTheme.accentText
                     ),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                 ) {
@@ -554,7 +661,7 @@ private fun SettingsAccountSection(
                     modifier = Modifier.testTag("settings_login_button"),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccountVisualStyle.accentColor,
+                        containerColor = AccountVisualTheme.accent,
                         contentColor = Color.White
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
@@ -719,7 +826,7 @@ private fun SettingsCacheLimitDialog(
                     Text(
                         text = message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AccountVisualStyle.accentTextColor,
+                        color = AccountVisualTheme.accentText,
                         modifier = Modifier.testTag("settings_playback_cache_limit_feedback")
                     )
                 }
@@ -727,7 +834,7 @@ private fun SettingsCacheLimitDialog(
                     Text(
                         text = message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AccountVisualStyle.accentTextColor,
+                        color = AccountVisualTheme.accentText,
                         modifier = Modifier.testTag("settings_playback_quality_feedback")
                     )
                 }
@@ -801,7 +908,7 @@ private fun SettingsPrewarmBudgetDialog(
                             Text(
                                 text = "当前",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = AccountVisualStyle.accentTextColor,
+                                color = AccountVisualTheme.accentText,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -874,7 +981,7 @@ private fun SettingsCacheSection(
                 color = if (state.isClearing) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
-                    AccountVisualStyle.accentTextColor
+                    AccountVisualTheme.accentText
                 },
                 modifier = Modifier
                     .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -927,7 +1034,7 @@ private fun SettingsAudioSourcesSection(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodySmall,
-                color = AccountVisualStyle.accentTextColor,
+                color = AccountVisualTheme.accentText,
                 modifier = Modifier
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .testTag("settings_audio_source_feedback")
@@ -937,7 +1044,7 @@ private fun SettingsAudioSourcesSection(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodySmall,
-                color = AccountVisualStyle.accentTextColor,
+                color = AccountVisualTheme.accentText,
                 modifier = Modifier
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .testTag("settings_audio_source_validation")
@@ -999,7 +1106,7 @@ private fun SettingsOnlineSourceImportDialog(
                     Text(
                         text = message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AccountVisualStyle.accentTextColor,
+                        color = AccountVisualTheme.accentText,
                         modifier = Modifier.testTag("settings_audio_source_validation")
                     )
                 }
@@ -1069,7 +1176,7 @@ private fun SettingsSwitchRow(
             modifier = (switchTestTag?.let { Modifier.testTag(it) } ?: Modifier)
                 .scale(0.82f),
             colors = SwitchDefaults.colors(
-                checkedTrackColor = AccountVisualStyle.accentColor.copy(alpha = 0.86f),
+                checkedTrackColor = AccountVisualTheme.accent.copy(alpha = 0.86f),
                 checkedThumbColor = Color.White,
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                 uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
@@ -1191,7 +1298,7 @@ private fun SettingsActionRow(
             fontSize = 15.sp,
             lineHeight = 20.sp,
             color = if (destructive) {
-                AccountVisualStyle.accentTextColor
+                AccountVisualTheme.accentText
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
@@ -1285,7 +1392,7 @@ private fun AudioSourceRow(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = if (item.initError != null) {
-                    AccountVisualStyle.accentTextColor
+                    AccountVisualTheme.accentText
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
@@ -1309,7 +1416,7 @@ private fun AudioSourceRow(
                     onClick = { onRemoveSource(item.id) },
                     modifier = Modifier.testTag("settings_audio_source_remove_${item.id}"),
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = AccountVisualStyle.accentTextColor
+                        contentColor = AccountVisualTheme.accentText
                     )
                 ) {
                     Text("删除")

@@ -49,13 +49,22 @@ object HomeDiscoveryLayoutSpec {
     const val discoveryImageAspectRatio = 1f
     const val virtualBannerPageCount = 4_000
 
-    private val dailyShortcutPalette = listOf(
+    private val dailyShortcutDecorativeLightPalette = listOf(
         Color(0xFFFFF1E6),
         Color(0xFFFFE8EE),
         Color(0xFFEAF4FF),
         Color(0xFFF1EDFF),
         Color(0xFFE8FAF1),
         Color(0xFFFFF4DA)
+    )
+
+    private val dailyShortcutDecorativeDarkPalette = listOf(
+        Color(0xFF3B2B22),
+        Color(0xFF3A242A),
+        Color(0xFF203142),
+        Color(0xFF2E2942),
+        Color(0xFF20382D),
+        Color(0xFF3A3120)
     )
 
     fun usesCarousel(layout: HomeSectionLayout): Boolean {
@@ -82,9 +91,15 @@ object HomeDiscoveryLayoutSpec {
         return initialBannerPage(itemCount) + positiveMod(currentPage, itemCount)
     }
 
-    fun dailyShortcutBackgroundColor(seed: String): Color {
+    /** Decorative shortcut color only; ordinary surfaces must use shared semantic tokens. */
+    fun dailyShortcutBackgroundColor(seed: String, darkTheme: Boolean = false): Color {
         val stableSeed = seed.ifBlank { "home-shortcut" }
-        return dailyShortcutPalette[positiveMod(stableSeed.hashCode(), dailyShortcutPalette.size)]
+        val palette = if (darkTheme) {
+            dailyShortcutDecorativeDarkPalette
+        } else {
+            dailyShortcutDecorativeLightPalette
+        }
+        return palette[positiveMod(stableSeed.hashCode(), palette.size)]
     }
 
     private fun positiveMod(value: Int, divisor: Int): Int {

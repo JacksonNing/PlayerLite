@@ -65,7 +65,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wxy.playerlite.R
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 internal const val LOGIN_WELCOME_TITLE = "登录后解锁在线播放"
 internal const val LOGIN_WELCOME_SUBTITLE = "本地播放仍可直接使用"
@@ -76,6 +77,7 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
 
         setContent {
             val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
@@ -91,7 +93,7 @@ class LoginActivity : ComponentActivity() {
                     finish()
                 }
             }
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 LoginScreen(
                     state = state,
                     onLoginMethodSelected = viewModel::selectLoginMethod,
@@ -219,7 +221,7 @@ private fun LoginTopBar(
             Text(
                 text = "跳过",
                 style = MaterialTheme.typography.bodyLarge,
-                color = AccountVisualStyle.accentDeepColor,
+                color = AccountVisualTheme.accent,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -371,7 +373,7 @@ private fun LoginFormSection(
             ) {
                 Text(
                     text = "退出登录",
-                    color = AccountVisualStyle.accentColor
+                    color = AccountVisualTheme.accent
                 )
             }
         }
@@ -441,7 +443,7 @@ private fun LoginMethodOption(
                     text = label,
                     style = MaterialTheme.typography.titleSmall,
                     color = if (selected) {
-                        AccountVisualStyle.accentColor
+                        AccountVisualTheme.accent
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
@@ -461,7 +463,7 @@ private fun LoginMethodOption(
                     )
                     .background(
                         if (selected) {
-                            AccountVisualStyle.accentColor
+                            AccountVisualTheme.accent
                         } else {
                             Color.Transparent
                         }
@@ -495,10 +497,10 @@ private fun LoginInputField(
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AccountVisualStyle.accentColor,
+            focusedBorderColor = AccountVisualTheme.accent,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.36f),
-            focusedLabelColor = AccountVisualStyle.accentColor,
-            focusedLeadingIconColor = AccountVisualStyle.accentColor,
+            focusedLabelColor = AccountVisualTheme.accent,
+            focusedLeadingIconColor = AccountVisualTheme.accent,
             unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface

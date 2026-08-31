@@ -72,9 +72,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteContentSystemBarsEffect
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
 import com.wxy.playerlite.core.playlist.PlaylistItem
@@ -124,10 +124,9 @@ class DailyRecommendedSongsActivity : BasePlaybackDetailActivity() {
                 MaterialTheme.colorScheme.onSurface
             }
 
-            SideEffect {
-                WindowCompat.getInsetsController(window, window.decorView)
-                    .isAppearanceLightStatusBars = !useLightStatusBarContent
-            }
+            PlayerLiteContentSystemBarsEffect(
+                useLightContent = useLightStatusBarContent
+            )
 
             BackHandler(onBack = ::finish)
             LaunchedEffect(viewModel) {
@@ -780,7 +779,8 @@ private fun DailyRecommendedSongsTracksSectionHeader(
         Text(
             text = "今日推荐歌曲",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = "共 $count 首，保留今日推荐顺序与推荐理由。",
@@ -844,6 +844,7 @@ private fun DailyRecommendedSongRow(
                         text = item.title,
                         style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                         fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

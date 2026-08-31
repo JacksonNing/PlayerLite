@@ -1,6 +1,9 @@
 package com.wxy.playerlite.feature.main
 
 import android.app.Application
+import com.wxy.playerlite.core.theme.ThemePreferencesRepository
+import com.wxy.playerlite.designsystem.theme.ThemeMode
+import com.wxy.playerlite.designsystem.theme.ThemeSelection
 import com.wxy.playerlite.test.MainDispatcherRule
 import com.wxy.playerlite.user.UserRepository
 import com.wxy.playerlite.user.model.LoginState
@@ -63,6 +66,7 @@ class SettingsViewModelTest {
             cacheController = clearController,
             audioSourceRepository = audioSourceRepository,
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -86,6 +90,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -123,6 +128,7 @@ class SettingsViewModelTest {
             cacheController = clearController,
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -155,6 +161,7 @@ class SettingsViewModelTest {
             cacheController = clearController,
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -177,6 +184,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = audioSourceRepository,
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -202,6 +210,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = audioSourceRepository,
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -242,6 +251,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -283,6 +293,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -307,6 +318,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = FakeSettingsPlaybackController()
         )
         advanceUntilIdle()
@@ -331,6 +343,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -355,6 +368,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -382,6 +396,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -408,6 +423,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -437,6 +453,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = FakeAudioSourceRepository(),
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -499,6 +516,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = audioSourceRepository,
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -562,6 +580,7 @@ class SettingsViewModelTest {
             cacheController = FakeSettingsCacheController(),
             audioSourceRepository = audioSourceRepository,
             playbackPreferencesRepository = preferencesRepository,
+            themePreferencesRepository = FakeThemePreferencesRepository(),
             playbackController = playbackController
         )
         advanceUntilIdle()
@@ -575,6 +594,74 @@ class SettingsViewModelTest {
             "builtin-default-source",
             viewModel.uiStateFlow.value.sourcesState.items.firstOrNull { it.isActive }?.id
         )
+    }
+
+    @Test
+    fun init_shouldProjectThemeRepositorySelection() = runTest {
+        val themeRepository = FakeThemePreferencesRepository(
+            initialSelection = ThemeSelection(mode = ThemeMode.DARK)
+        )
+        val viewModel = SettingsViewModel(
+            application = Application(),
+            userRepository = FakeSettingsUserRepository(initialState = LoginState.LoggedOut),
+            cacheRepository = FakeSettingsCacheRepository(),
+            cacheController = FakeSettingsCacheController(),
+            audioSourceRepository = FakeAudioSourceRepository(),
+            playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = themeRepository,
+            playbackController = FakeSettingsPlaybackController()
+        )
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.DARK, viewModel.uiStateFlow.value.appearanceState.themeMode)
+    }
+
+    @Test
+    fun updateThemeMode_shouldDelegateAndContinueProjectingRepositoryFlow() = runTest {
+        val themeRepository = FakeThemePreferencesRepository()
+        val viewModel = SettingsViewModel(
+            application = Application(),
+            userRepository = FakeSettingsUserRepository(initialState = LoginState.LoggedOut),
+            cacheRepository = FakeSettingsCacheRepository(),
+            cacheController = FakeSettingsCacheController(),
+            audioSourceRepository = FakeAudioSourceRepository(),
+            playbackPreferencesRepository = FakeSettingsPlaybackPreferencesRepository(),
+            themePreferencesRepository = themeRepository,
+            playbackController = FakeSettingsPlaybackController()
+        )
+        advanceUntilIdle()
+
+        viewModel.updateThemeMode(ThemeMode.LIGHT)
+        advanceUntilIdle()
+
+        assertEquals(listOf(ThemeMode.LIGHT), themeRepository.requestedModes)
+        assertEquals(ThemeMode.LIGHT, viewModel.uiStateFlow.value.appearanceState.themeMode)
+
+        themeRepository.emit(ThemeMode.DARK)
+        advanceUntilIdle()
+
+        assertEquals(ThemeMode.DARK, viewModel.uiStateFlow.value.appearanceState.themeMode)
+    }
+}
+
+private class FakeThemePreferencesRepository(
+    initialSelection: ThemeSelection = ThemeSelection()
+) : ThemePreferencesRepository {
+    private val mutableSelectionFlow = MutableStateFlow(initialSelection)
+    val requestedModes = mutableListOf<ThemeMode>()
+
+    override val currentSelection: ThemeSelection
+        get() = mutableSelectionFlow.value
+
+    override val selectionFlow: StateFlow<ThemeSelection> = mutableSelectionFlow
+
+    override fun setThemeMode(mode: ThemeMode) {
+        requestedModes += mode
+        mutableSelectionFlow.value = mutableSelectionFlow.value.copy(mode = mode)
+    }
+
+    fun emit(mode: ThemeMode) {
+        mutableSelectionFlow.value = mutableSelectionFlow.value.copy(mode = mode)
     }
 }
 

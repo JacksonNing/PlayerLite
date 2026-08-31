@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens
 import com.wxy.playerlite.feature.main.HomeChromeLayoutSpec
 import com.wxy.playerlite.feature.player.model.AUDIO_TRACK_PLAYSTATE_PLAYING
 import com.wxy.playerlite.feature.player.model.PlayerUiState
@@ -115,6 +116,10 @@ internal data class SharedMiniPlayerBarTestTags(
         get() = "${prefix}_playlist_button"
 }
 
+internal fun resolveSharedMiniPlayerSurfaceColor(
+    visualTokens: PlayerLiteVisualTokens
+): Color = visualTokens.surfaceRaised
+
 internal enum class SharedMiniPlayerOpenPlayerClickTarget {
     Card,
     Body
@@ -172,7 +177,7 @@ internal fun SharedMiniPlayerBar(
             .widthIn(max = HomeChromeLayoutSpec.miniPlayerMaxWidth)
             .heightIn(min = HomeChromeLayoutSpec.miniPlayerMinHeight),
         shape = miniPlayerShape,
-        color = Color.White.copy(alpha = 0.995f),
+            color = resolveSharedMiniPlayerSurfaceColor(colors),
         tonalElevation = 0.dp,
         shadowElevation = HomeChromeLayoutSpec.miniPlayerShadowElevation,
         border = BorderStroke(

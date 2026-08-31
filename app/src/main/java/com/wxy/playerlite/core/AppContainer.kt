@@ -9,6 +9,8 @@ import com.wxy.playerlite.core.playback.SongAudioQualityRepository
 import com.wxy.playerlite.core.playback.SongDetailRepository
 import com.wxy.playerlite.core.recentplayback.LocalRecentPlaybackStore
 import com.wxy.playerlite.core.recentplayback.SharedPreferencesLocalRecentPlaybackStore
+import com.wxy.playerlite.core.theme.SharedPreferencesThemePreferencesRepository
+import com.wxy.playerlite.core.theme.ThemePreferencesRepository
 import com.wxy.playerlite.feature.album.AlbumDetailRepository
 import com.wxy.playerlite.feature.album.DefaultAlbumDetailRepository
 import com.wxy.playerlite.feature.album.NeteaseAlbumDetailRemoteDataSource
@@ -75,6 +77,10 @@ internal object AppContainer {
         return getServices(context).searchRepository
     }
 
+    fun themePreferencesRepository(context: Context): ThemePreferencesRepository {
+        return getServices(context).themePreferencesRepository
+    }
+
     fun userCenterRepository(context: Context): UserCenterRepository {
         return getServices(context).userCenterRepository
     }
@@ -134,6 +140,7 @@ internal object AppContainer {
     private fun buildServices(context: Context): Services {
         val preferences = context.getSharedPreferences(USER_SESSION_PREFS, Context.MODE_PRIVATE)
         val storage = SharedPreferencesUserSessionStorage(preferences)
+        val themePreferencesRepository = SharedPreferencesThemePreferencesRepository(context)
         val localRecentPlaybackStore = SharedPreferencesLocalRecentPlaybackStore(
             preferences = context.getSharedPreferences(
                 LOCAL_RECENT_PLAYBACK_PREFS,
@@ -173,6 +180,7 @@ internal object AppContainer {
                 remoteDataSource = NeteaseDailyRecommendedSongsRemoteDataSource(httpClient)
             ),
             searchRepository = searchRepository,
+            themePreferencesRepository = themePreferencesRepository,
             userCenterRepository = DefaultUserCenterRepository(
                 remoteDataSource = NeteaseUserCenterRemoteDataSource(httpClient),
                 localRecentPlaybackStore = localRecentPlaybackStore
@@ -219,6 +227,7 @@ internal object AppContainer {
         val homeHostDependencies: HomeHostDependencies,
         val dailyRecommendedSongsRepository: DailyRecommendedSongsRepository,
         val searchRepository: SearchRepository,
+        val themePreferencesRepository: ThemePreferencesRepository,
         val userCenterRepository: UserCenterRepository,
         val artistDetailRepository: ArtistDetailRepository,
         val playlistDetailRepository: PlaylistDetailRepository,

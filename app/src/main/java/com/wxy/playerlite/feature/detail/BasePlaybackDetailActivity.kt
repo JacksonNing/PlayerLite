@@ -24,7 +24,8 @@ import com.wxy.playerlite.feature.song.createAlbumDetailIntent
 import com.wxy.playerlite.feature.song.createArtistDetailIntent
 import com.wxy.playerlite.feature.song.createSongDetailIntent
 import com.wxy.playerlite.feature.player.ui.components.PlaylistBottomSheet
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 abstract class BasePlaybackDetailActivity : ComponentActivity() {
     private val playerViewModel: PlayerViewModel by sharedPlayerViewModels()
@@ -33,8 +34,9 @@ abstract class BasePlaybackDetailActivity : ComponentActivity() {
         content: @Composable (bottomOverlayPadding: Dp) -> Unit
     ) {
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val playerState = playerViewModel.uiStateFlow.collectAsStateWithLifecycle().value
                 val navigationBottomPadding =
                     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()

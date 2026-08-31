@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.graphics.Color
+import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -17,6 +19,38 @@ import org.robolectric.RobolectricTestRunner
 class SharedMiniPlayerBarRobolectricTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun sharedMiniPlayerBarSurface_shouldFollowLightDarkAndCustomTokens() {
+        val lightScheme = PlayerLiteThemeContract.colorScheme(darkTheme = false)
+        val lightTokens = PlayerLiteThemeContract.visualTokens(
+            darkTheme = false,
+            colorScheme = lightScheme
+        )
+        val darkScheme = PlayerLiteThemeContract.colorScheme(darkTheme = true)
+        val darkTokens = PlayerLiteThemeContract.visualTokens(
+            darkTheme = true,
+            colorScheme = darkScheme
+        )
+        val customPalettes = PlayerLiteThemeContract.DefaultBrandPalettes.copy(
+            dark = PlayerLiteThemeContract.DefaultBrandPalettes.dark.copy(
+                surfaceRaised = Color(0xFF345678)
+            )
+        )
+        val customScheme = PlayerLiteThemeContract.colorScheme(
+            darkTheme = true,
+            brandPalettes = customPalettes
+        )
+        val customTokens = PlayerLiteThemeContract.visualTokens(
+            darkTheme = true,
+            colorScheme = customScheme,
+            brandPalettes = customPalettes
+        )
+
+        assertEquals(Color.White, resolveSharedMiniPlayerSurfaceColor(lightTokens))
+        assertEquals(Color(0xFF1D2024), resolveSharedMiniPlayerSurfaceColor(darkTokens))
+        assertEquals(Color(0xFF345678), resolveSharedMiniPlayerSurfaceColor(customTokens))
+    }
 
     @Test
     fun sharedMiniPlayerBar_bodyClickMode_shouldScopeTagsAndCallbacks() {

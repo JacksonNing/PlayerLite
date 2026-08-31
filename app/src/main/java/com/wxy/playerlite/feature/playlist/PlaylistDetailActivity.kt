@@ -5,16 +5,16 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.lerp
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wxy.playerlite.core.AppContainer
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
+import com.wxy.playerlite.designsystem.theme.PlayerLiteContentSystemBarsEffect
 import com.wxy.playerlite.feature.detail.BasePlaybackDetailActivity
+import com.wxy.playerlite.feature.detail.detailHeroContentColor
 import com.wxy.playerlite.feature.detail.rememberDynamicHeroAccentColor
 import com.wxy.playerlite.feature.detail.shouldUseLightStatusBarContent
 
@@ -47,15 +47,10 @@ class PlaylistDetailActivity : BasePlaybackDetailActivity() {
                 fraction = headerChromeProgressState.floatValue.coerceIn(0f, 1f)
             )
             val useLightStatusBarContent = shouldUseLightStatusBarContent(statusBarBlendColor)
-            val topBarContentColor = if (useLightStatusBarContent) {
-                MaterialTheme.colorScheme.surface
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            }
-            SideEffect {
-                WindowCompat.getInsetsController(window, window.decorView)
-                    .isAppearanceLightStatusBars = !useLightStatusBarContent
-            }
+            val topBarContentColor = detailHeroContentColor(statusBarBlendColor)
+            PlayerLiteContentSystemBarsEffect(
+                useLightContent = useLightStatusBarContent
+            )
             BackHandler(onBack = ::finish)
             PlaylistDetailScreen(
                 state = state,

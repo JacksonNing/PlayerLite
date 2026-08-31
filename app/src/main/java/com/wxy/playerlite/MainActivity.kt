@@ -54,7 +54,8 @@ import com.wxy.playerlite.feature.song.createSongDetailIntent
 import com.wxy.playerlite.feature.user.InitialLoginLaunchGate
 import com.wxy.playerlite.feature.user.LoginActivity
 import com.wxy.playerlite.feature.webplaylistimport.WebPlaylistImportActivity
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 class MainActivity : ComponentActivity() {
     private val viewModel: PlayerViewModel by sharedPlayerViewModels()
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         restoreShellState(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         redirectLegacyPlayerLaunchRequest(intent)
 
         setContent {
@@ -113,7 +115,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 if (
                     !InitialLoginLaunchGate.shouldShowMainContent(
                         isSessionReady = isSessionReady,

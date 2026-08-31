@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wxy.playerlite.core.AppContainer
+import com.wxy.playerlite.core.theme.ThemePreferencesRepository
+import com.wxy.playerlite.designsystem.theme.ThemeMode
 import com.wxy.playerlite.feature.user.model.toUserSessionUiState
 import com.wxy.playerlite.playback.model.PlaybackAudioQuality
 import com.wxy.playerlite.playback.model.PlaybackPrewarmPreferences
@@ -23,6 +25,7 @@ internal class SettingsViewModel(
     private val cacheRepository: SettingsCacheRepositoryContract,
     private val cacheController: SettingsCacheControllerContract,
     private val audioSourceRepository: AudioSourceRepositoryContract,
+    private val themePreferencesRepository: ThemePreferencesRepository,
     private val playbackPreferencesRepository: SettingsPlaybackPreferencesRepositoryContract =
         SettingsPlaybackPreferencesRepository(application.applicationContext),
     private val playbackController: SettingsPlaybackControllerContract =
@@ -43,10 +46,19 @@ internal class SettingsViewModel(
                 Log.w(TAG, errorMessage)
             }
         ),
-        audioSourceRepository = AudioSourceRepository(application.applicationContext)
+        audioSourceRepository = AudioSourceRepository(application.applicationContext),
+        themePreferencesRepository = AppContainer.themePreferencesRepository(
+            application.applicationContext
+        )
     )
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            appearanceState = SettingsAppearanceUiState(
+                themeMode = themePreferencesRepository.currentSelection.mode
+            )
+        )
+    )
     val uiStateFlow: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private var latestLoginState: LoginState = userRepository.loginStateFlow.value
@@ -58,6 +70,17 @@ internal class SettingsViewModel(
             userRepository.loginStateFlow.collect { loginState ->
                 latestLoginState = loginState
                 publishAccountState()
+            }
+        }
+        viewModelScope.launch {
+            themePreferencesRepository.selectionFlow.collect { selection ->
+                _uiState.update { current ->
+                    current.copy(
+                        appearanceState = SettingsAppearanceUiState(
+                            themeMode = selection.mode
+                        )
+                    )
+                }
             }
         }
         refreshCache()
@@ -102,6 +125,10 @@ internal class SettingsViewModel(
                 )
             }
         }
+    }
+
+    fun updateThemeMode(mode: ThemeMode) {
+        themePreferencesRepository.setThemeMode(mode)
     }
 
     fun clearManagedCache() {

@@ -67,7 +67,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.core.playback.AppPlaybackGraph
 import com.wxy.playerlite.feature.song.SongDetailActivity
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 class LocalSongsActivity : ComponentActivity() {
     private val viewModel: LocalSongsViewModel by viewModels {
@@ -83,9 +84,10 @@ class LocalSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         viewModel.onPermissionStateChanged(hasLocalSongsPermission())
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
                 BackHandler(onBack = ::finish)
                 LaunchedEffect(viewModel) {

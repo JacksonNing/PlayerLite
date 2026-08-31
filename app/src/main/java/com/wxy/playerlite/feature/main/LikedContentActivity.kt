@@ -62,7 +62,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.user.LoginActivity
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 class LikedContentActivity : ComponentActivity() {
     private val viewModel: LikedContentViewModel by viewModels()
@@ -70,8 +71,9 @@ class LikedContentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
                 BackHandler(onBack = ::finish)
                 LikedContentScreen(

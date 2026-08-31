@@ -1,6 +1,5 @@
 package com.wxy.playerlite.feature.search
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -10,8 +9,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.wxy.playerlite.designsystem.theme.PlayerLiteDesignTheme
+import com.wxy.playerlite.designsystem.theme.PlayerLiteBrandPalettes
 import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTokens
+import com.wxy.playerlite.designsystem.theme.PlayerLiteSystemBarsEffect
 
 @Immutable
 internal data class SearchFeatureVisualTokens(
@@ -47,13 +48,18 @@ internal object SearchFeatureVisualTheme {
 
 @Composable
 internal fun SearchFeatureTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
+    brandPalettes: PlayerLiteBrandPalettes = PlayerLiteThemeContract.DefaultBrandPalettes,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = PlayerLiteThemeContract.colorScheme(darkTheme = darkTheme)
+    val colorScheme = PlayerLiteThemeContract.colorScheme(
+        darkTheme = darkTheme,
+        brandPalettes = brandPalettes
+    )
     val sharedTokens = PlayerLiteThemeContract.visualTokens(
         darkTheme = darkTheme,
-        colorScheme = colorScheme
+        colorScheme = colorScheme,
+        brandPalettes = brandPalettes
     )
     val searchTokens = sharedTokens.toSearchFeatureVisualTokens(
         colorScheme = colorScheme,
@@ -63,8 +69,11 @@ internal fun SearchFeatureTheme(
     CompositionLocalProvider(LocalSearchFeatureVisualTokens provides searchTokens) {
         PlayerLiteDesignTheme(
             darkTheme = darkTheme,
-            content = content
-        )
+            brandPalettes = brandPalettes
+        ) {
+            PlayerLiteSystemBarsEffect(resolvedDarkTheme = darkTheme)
+            content()
+        }
     }
 }
 

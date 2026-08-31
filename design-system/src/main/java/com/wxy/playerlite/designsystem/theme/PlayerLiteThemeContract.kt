@@ -26,10 +26,16 @@ data class PlayerLiteBrandPalette(
     val neutral: Color,
     val neutralVariant: Color,
     val neutralStrong: Color,
+    val surface: Color,
+    val surfaceRaised: Color,
+    val onPrimary: Color,
+    val onSecondary: Color,
+    val onTertiary: Color,
     val onSurface: Color,
     val onSurfaceVariant: Color,
     val outline: Color,
-    val error: Color
+    val error: Color,
+    val onError: Color
 )
 
 @Immutable
@@ -64,10 +70,16 @@ object PlayerLiteThemeContract {
             neutral = Color(0xFFF9F9FB),
             neutralVariant = Color(0xFFF1F1F4),
             neutralStrong = Color(0xFFE6E6EA),
+            surface = Color.White,
+            surfaceRaised = Color.White,
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.White,
             onSurface = Color(0xFF131316),
             onSurfaceVariant = Color(0xFF74747A),
             outline = Color(0xFFDADAE0),
-            error = Color(0xFFB3261E)
+            error = Color(0xFFB3261E),
+            onError = Color.White
         ),
         dark = PlayerLiteBrandPalette(
             primary = Color(0xFFFF6E67),
@@ -76,10 +88,16 @@ object PlayerLiteThemeContract {
             neutral = Color(0xFF111315),
             neutralVariant = Color(0xFF191C1F),
             neutralStrong = Color(0xFF24282C),
+            surface = Color(0xFF191C1F),
+            surfaceRaised = Color(0xFF1D2024),
+            onPrimary = Color(0xFF310909),
+            onSecondary = Color(0xFF1A1A1A),
+            onTertiary = Color(0xFF032027),
             onSurface = Color(0xFFF2F2F5),
             onSurfaceVariant = Color(0xFFB8B8BE),
             outline = Color(0xFF3C4044),
-            error = Color(0xFFFFB4AB)
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005)
         )
     )
 
@@ -96,13 +114,15 @@ object PlayerLiteThemeContract {
 
     fun visualTokens(
         darkTheme: Boolean,
-        colorScheme: ColorScheme
+        colorScheme: ColorScheme,
+        brandPalettes: PlayerLiteBrandPalettes = DefaultBrandPalettes
     ): PlayerLiteVisualTokens {
+        val brandPalette = if (darkTheme) brandPalettes.dark else brandPalettes.light
         return PlayerLiteVisualTokens(
             canvas = colorScheme.background,
             surfacePrimary = colorScheme.surface,
             surfaceMuted = colorScheme.surfaceVariant,
-            surfaceRaised = if (darkTheme) Color(0xFF1D2024) else Color.White,
+            surfaceRaised = brandPalette.surfaceRaised,
             surfaceHighlight = colorScheme.primary.copy(alpha = if (darkTheme) 0.14f else 0.08f),
             textSecondary = colorScheme.onSurfaceVariant,
             textMuted = colorScheme.secondary,
@@ -173,11 +193,20 @@ val LocalPlayerLiteVisualTokens = staticCompositionLocalOf {
     )
 }
 
+val LocalPlayerLiteResolvedDarkTheme = staticCompositionLocalOf { false }
+
 object PlayerLiteVisualTheme {
     val colors: PlayerLiteVisualTokens
         @Composable
         @ReadOnlyComposable
         get() = LocalPlayerLiteVisualTokens.current
+}
+
+object PlayerLiteResolvedTheme {
+    val darkTheme: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalPlayerLiteResolvedDarkTheme.current
 }
 
 @Composable
@@ -193,10 +222,14 @@ fun PlayerLiteDesignTheme(
     )
     val visualTokens = PlayerLiteThemeContract.visualTokens(
         darkTheme = darkTheme,
-        colorScheme = colorScheme
+        colorScheme = colorScheme,
+        brandPalettes = brandPalettes
     )
 
-    CompositionLocalProvider(LocalPlayerLiteVisualTokens provides visualTokens) {
+    CompositionLocalProvider(
+        LocalPlayerLiteVisualTokens provides visualTokens,
+        LocalPlayerLiteResolvedDarkTheme provides darkTheme
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
@@ -208,20 +241,20 @@ fun PlayerLiteDesignTheme(
 private fun PlayerLiteBrandPalette.toLightColorScheme(): ColorScheme {
     return lightColorScheme(
         primary = primary,
-        onPrimary = Color.White,
+        onPrimary = onPrimary,
         secondary = secondary,
-        onSecondary = Color.White,
+        onSecondary = onSecondary,
         tertiary = tertiary,
-        onTertiary = Color.White,
+        onTertiary = onTertiary,
         background = neutral,
         onBackground = onSurface,
-        surface = Color.White,
+        surface = surface,
         onSurface = onSurface,
         surfaceVariant = neutralVariant,
         onSurfaceVariant = onSurfaceVariant,
         outline = outline,
         error = error,
-        onError = Color.White
+        onError = onError
     )
 }
 
@@ -243,19 +276,19 @@ private fun TextStyle.withPlayerLiteFont(
 private fun PlayerLiteBrandPalette.toDarkColorScheme(): ColorScheme {
     return darkColorScheme(
         primary = primary,
-        onPrimary = Color(0xFF310909),
+        onPrimary = onPrimary,
         secondary = secondary,
-        onSecondary = Color(0xFF1A1A1A),
+        onSecondary = onSecondary,
         tertiary = tertiary,
-        onTertiary = Color(0xFF032027),
+        onTertiary = onTertiary,
         background = neutral,
         onBackground = onSurface,
-        surface = neutralVariant,
+        surface = surface,
         onSurface = onSurface,
         surfaceVariant = neutralStrong,
         onSurfaceVariant = onSurfaceVariant,
         outline = outline,
         error = error,
-        onError = Color(0xFF690005)
+        onError = onError
     )
 }

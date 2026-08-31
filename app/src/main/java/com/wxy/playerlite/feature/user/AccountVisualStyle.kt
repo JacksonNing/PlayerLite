@@ -16,21 +16,35 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 
 internal object AccountVisualStyle {
-    val accentColor = Color(0xFFE53935)
-    val accentDeepColor = Color(0xFFC62828)
-    val accentSoftColor = Color(0xFFFDECEA)
-    val accentTextColor = Color(0xFFA52723)
     val contentHorizontalPadding = 24.dp
     val sectionSpacing = 16.dp
     val contentMaxWidth = 420.dp
     val cardCorner = 12.dp
     val primaryButtonHeight = 52.dp
+}
+
+internal object AccountVisualTheme {
+    val accent: androidx.compose.ui.graphics.Color
+        @Composable
+        @ReadOnlyComposable
+        get() = PlayerLiteVisualTheme.colors.accentStrong
+
+    val accentSoft: androidx.compose.ui.graphics.Color
+        @Composable
+        @ReadOnlyComposable
+        get() = PlayerLiteVisualTheme.colors.surfaceHighlight
+
+    val accentText: androidx.compose.ui.graphics.Color
+        @Composable
+        @ReadOnlyComposable
+        get() = MaterialTheme.colorScheme.primary
 }
 
 @Composable
@@ -86,10 +100,10 @@ internal fun AccountPrimaryButton(
         modifier = modifier.height(AccountVisualStyle.primaryButtonHeight),
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = AccountVisualStyle.accentColor,
-            contentColor = Color.White,
-            disabledContainerColor = AccountVisualStyle.accentColor.copy(alpha = 0.48f),
-            disabledContentColor = Color.White.copy(alpha = 0.82f)
+            containerColor = AccountVisualTheme.accent,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = AccountVisualTheme.accent.copy(alpha = 0.48f),
+            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f)
         )
     ) {
         Text(

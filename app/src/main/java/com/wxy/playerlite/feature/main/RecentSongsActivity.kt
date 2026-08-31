@@ -13,7 +13,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +76,8 @@ import com.wxy.playerlite.feature.player.runtime.DetailPlaybackRequest
 import com.wxy.playerlite.feature.search.SearchRouteTarget
 import com.wxy.playerlite.feature.song.SongDetailActivity
 import com.wxy.playerlite.feature.user.LoginActivity
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 class RecentSongsActivity : ComponentActivity() {
     private val viewModel: RecentSongsViewModel by viewModels()
@@ -92,8 +92,9 @@ class RecentSongsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         setContent {
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
                 BackHandler(onBack = ::finish)
                 RecentSongsScreen(
@@ -706,11 +707,7 @@ private fun formatRecentPosition(position: Int): String {
 
 @Composable
 private fun recentPlaybackEmphasisColor(): Color {
-    return if (isSystemInDarkTheme()) {
-        PlayerLiteVisualTheme.colors.accentStrong
-    } else {
-        Color(0xFFD32F2F)
-    }
+    return PlayerLiteVisualTheme.colors.accentStrong
 }
 
 private fun recentTrackMetadata(

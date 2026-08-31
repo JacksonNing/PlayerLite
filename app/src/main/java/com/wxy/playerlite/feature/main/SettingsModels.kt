@@ -159,6 +159,11 @@ internal data class SettingsAccountUiState(
     val isLogoutConfirmVisible: Boolean = false
 )
 
+internal data class SettingsAppearanceUiState(
+    val themeMode: com.wxy.playerlite.designsystem.theme.ThemeMode =
+        com.wxy.playerlite.designsystem.theme.ThemeMode.SYSTEM
+)
+
 internal data class SettingsCacheUiState(
     val snapshot: ManagedCacheSnapshot? = ManagedCacheSnapshot(),
     val isRefreshing: Boolean = false,
@@ -235,6 +240,7 @@ internal data class SettingsSourcesUiState(
 
 internal data class SettingsUiState(
     val accountState: SettingsAccountUiState = SettingsAccountUiState(),
+    val appearanceState: SettingsAppearanceUiState = SettingsAppearanceUiState(),
     val cacheState: SettingsCacheUiState = SettingsCacheUiState(),
     val playbackPreferencesState: SettingsPlaybackPreferencesUiState =
         SettingsPlaybackPreferencesUiState(),

@@ -2,12 +2,14 @@ package com.wxy.playerlite.feature.search
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.wxy.playerlite.designsystem.theme.PlayerLiteSkinCatalog
+import com.wxy.playerlite.designsystem.theme.applyPlayerLiteResolvedThemeSystemBars
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -94,10 +98,27 @@ class SearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val initialThemeSelection = hostDependencies.themeSelectionFlow.value
+        val systemDarkTheme = resources.configuration.uiMode and
+            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        applyPlayerLiteResolvedThemeSystemBars(
+            window = window,
+            resolvedDarkTheme = initialThemeSelection.mode.resolveDarkTheme(systemDarkTheme)
+        )
 
         setContent {
             val state = viewModel.uiStateFlow.collectAsStateWithLifecycle().value
-            SearchFeatureTheme {
+            val themeSelection = hostDependencies.themeSelectionFlow
+                .collectAsStateWithLifecycle()
+                .value
+            val resolvedDarkTheme = themeSelection.mode.resolveDarkTheme(
+                systemDark = isSystemInDarkTheme()
+            )
+            val skin = PlayerLiteSkinCatalog.resolve(themeSelection.skinId)
+            SearchFeatureTheme(
+                darkTheme = resolvedDarkTheme,
+                brandPalettes = skin.palettes
+            ) {
                 SearchScreen(
                     state = state,
                     onBack = ::finish,

@@ -26,6 +26,7 @@ class PlayerLiteApplication : Application(),
     override fun searchHostDependencies(): SearchHostDependencies {
         return SearchHostDependencies(
             repository = AppContainer.searchRepository(this),
+            themeSelectionFlow = AppContainer.themePreferencesRepository(this).selectionFlow,
             routeHandler = SearchRouteHandler { context, target ->
                 searchRouteIntent(context, target)?.let(context::startActivity)
             },

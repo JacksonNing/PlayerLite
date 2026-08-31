@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasTestTag
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import com.wxy.playerlite.designsystem.theme.ThemeMode
 import com.wxy.playerlite.playback.model.PlaybackAudioQuality
 import com.wxy.playerlite.ui.theme.PlayerLiteTheme
 import org.junit.Assert.assertEquals
@@ -62,6 +64,10 @@ class SettingsScreenRobolectricTest {
         composeRule.onNodeWithTag("settings_account_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_account_title").assertTextContains("未登录")
         composeRule.onNodeWithTag("settings_login_button").assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
+            matcher = hasTestTag("settings_appearance_section")
+        )
+        composeRule.onNodeWithTag("settings_appearance_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
             matcher = hasTestTag("settings_playback_preferences_section")
         )
@@ -185,6 +191,10 @@ class SettingsScreenRobolectricTest {
         composeRule.onNodeWithTag("settings_account_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_account_title").assertTextContains("Codex")
         composeRule.onNodeWithTag("settings_logout_button").assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
+            matcher = hasTestTag("settings_appearance_section")
+        )
+        composeRule.onNodeWithTag("settings_appearance_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
             matcher = hasTestTag("settings_cache_total")
         )
@@ -465,5 +475,69 @@ class SettingsScreenRobolectricTest {
         )
             .assertHasClickAction()
         composeRule.onAllNodesWithText("当前默认").assertCountEquals(1)
+    }
+
+    @Test
+    fun themeModeDialog_shouldExposeThreeOptionsAndUpdateCurrentValueImmediately() {
+        var state by mutableStateOf(
+            SettingsUiState(
+                appearanceState = SettingsAppearanceUiState(themeMode = ThemeMode.DARK)
+            )
+        )
+        var selectedMode: ThemeMode? = null
+
+        composeRule.setContent {
+            PlayerLiteTheme {
+                SettingsScreen(
+                    state = state,
+                    onBack = {},
+                    onLoginClick = {},
+                    onShowLogoutConfirm = {},
+                    onDismissLogoutConfirm = {},
+                    onConfirmLogout = {},
+                    onThemeModeChange = { mode ->
+                        selectedMode = mode
+                        state = state.copy(
+                            appearanceState = SettingsAppearanceUiState(themeMode = mode)
+                        )
+                    },
+                    onRefreshCache = {},
+                    onClearCache = {},
+                    onPlaybackCacheLimitChange = {},
+                    onSavePlaybackCacheLimit = {},
+                    onPreferredAudioQualityChange = {},
+                    onPendingImportUrlChange = {},
+                    onImportAudioSourceFromUrl = {},
+                    onImportAudioSourceFromLocal = {},
+                    onSetActiveAudioSource = {},
+                    onRemoveAudioSource = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("settings_scroll_content").performScrollToNode(
+            matcher = hasTestTag("settings_theme_mode_trigger")
+        )
+        composeRule.onNodeWithTag(
+            testTag = "settings_theme_mode_current_value",
+            useUnmergedTree = true
+        ).assertTextContains("夜间模式")
+        composeRule.onNodeWithTag("settings_theme_mode_trigger").performClick()
+
+        composeRule.onNodeWithTag("settings_theme_mode_dialog").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_theme_mode_option_system").assertHasClickAction()
+        composeRule.onNodeWithTag("settings_theme_mode_option_light").assertHasClickAction()
+        composeRule.onNodeWithTag("settings_theme_mode_option_dark").assertIsSelected()
+        composeRule.onNodeWithTag("settings_theme_mode_option_light").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertEquals(ThemeMode.LIGHT, selectedMode)
+        }
+        composeRule.onAllNodesWithTag("settings_theme_mode_dialog").assertCountEquals(0)
+        composeRule.onNodeWithTag(
+            testTag = "settings_theme_mode_current_value",
+            useUnmergedTree = true
+        ).assertTextContains("日间模式")
     }
 }

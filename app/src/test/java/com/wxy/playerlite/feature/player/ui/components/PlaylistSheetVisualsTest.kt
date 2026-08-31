@@ -95,6 +95,45 @@ class PlaylistSheetVisualsTest {
     }
 
     @Test
+    fun resolvePlaylistSheetItemVisuals_shouldUseCustomSkinTokensWithoutDefaultPaletteLeakage() {
+        val customPalettes = PlayerLiteThemeContract.DefaultBrandPalettes.copy(
+            dark = PlayerLiteThemeContract.DefaultBrandPalettes.dark.copy(
+                primary = Color(0xFF123456),
+                surfaceRaised = Color(0xFF234567),
+                onSurface = Color(0xFF345678)
+            )
+        )
+        val colorScheme = PlayerLiteThemeContract.colorScheme(
+            darkTheme = true,
+            brandPalettes = customPalettes
+        )
+        val visualTokens = PlayerLiteThemeContract.visualTokens(
+            darkTheme = true,
+            colorScheme = colorScheme,
+            brandPalettes = customPalettes
+        )
+
+        val active = resolvePlaylistSheetItemVisuals(
+            isActive = true,
+            isDragging = false,
+            canReorder = true,
+            visualTokens = visualTokens,
+            onSurfaceColor = colorScheme.onSurface
+        )
+        val dragging = resolvePlaylistSheetItemVisuals(
+            isActive = false,
+            isDragging = true,
+            canReorder = true,
+            visualTokens = visualTokens,
+            onSurfaceColor = colorScheme.onSurface
+        )
+
+        assertEquals(Color(0xFF123456), active.titleColor)
+        assertEquals(Color(0xFF234567), dragging.containerColor)
+        assertEquals(Color(0xFF345678), dragging.titleColor)
+    }
+
+    @Test
     fun playlistBottomSheet_shouldHideReorderHintWhenReorderUnavailableOrSingleItem() {
         composeRule.setContent {
             PlayerLiteTheme {

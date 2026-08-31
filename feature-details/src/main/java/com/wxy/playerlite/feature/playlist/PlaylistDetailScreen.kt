@@ -604,6 +604,7 @@ private fun PlaylistTracksSectionHeader() {
             text = "歌曲列表",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.testTag("playlist_tracks_section")
         )
     }
@@ -1133,6 +1134,7 @@ private fun PlaylistTrackRowCard(
                     text = item.title,
                     style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

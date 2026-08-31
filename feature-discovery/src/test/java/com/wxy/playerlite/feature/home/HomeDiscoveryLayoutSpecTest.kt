@@ -87,6 +87,27 @@ class HomeDiscoveryLayoutSpecTest {
     }
 
     @Test
+    fun dailyShortcutDecorativePalette_shouldProvideStableDarkVariant() {
+        val light = HomeDiscoveryLayoutSpec.dailyShortcutBackgroundColor(
+            seed = "每日推荐",
+            darkTheme = false
+        )
+        val dark = HomeDiscoveryLayoutSpec.dailyShortcutBackgroundColor(
+            seed = "每日推荐",
+            darkTheme = true
+        )
+
+        assertTrue(light != dark)
+        assertEquals(
+            dark,
+            HomeDiscoveryLayoutSpec.dailyShortcutBackgroundColor(
+                seed = "每日推荐",
+                darkTheme = true
+            )
+        )
+    }
+
+    @Test
     fun discoveryCards_shouldUseFullBleedSquareArtwork() {
         assertTrue(HomeDiscoveryLayoutSpec.discoveryImageUsesFullBleed)
         assertEquals(1f, HomeDiscoveryLayoutSpec.discoveryImageAspectRatio)

@@ -108,6 +108,7 @@ import com.wxy.playerlite.feature.player.ui.resolveSharedMiniPlayerBarState
 import com.wxy.playerlite.feature.player.ui.components.PlaylistBottomSheet
 import com.wxy.playerlite.feature.user.AccountPrimaryButton
 import com.wxy.playerlite.feature.user.AccountVisualStyle
+import com.wxy.playerlite.feature.user.AccountVisualTheme
 import com.wxy.playerlite.feature.user.model.UserSessionUiState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -606,7 +607,7 @@ private fun UserCenterQuickEntry(
             Surface(
                 modifier = Modifier.size(50.dp),
                 shape = RoundedCornerShape(14.dp),
-                color = AccountVisualStyle.accentSoftColor,
+                color = AccountVisualTheme.accentSoft,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {
@@ -614,7 +615,7 @@ private fun UserCenterQuickEntry(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = AccountVisualStyle.accentColor,
+                        tint = AccountVisualTheme.accent,
                         modifier = Modifier.size(25.dp)
                     )
                 }
@@ -623,7 +624,7 @@ private fun UserCenterQuickEntry(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = AccountVisualStyle.accentColor,
+                tint = AccountVisualTheme.accent,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -741,7 +742,7 @@ private fun LazyListScope.userCenterLoggedInItems(
                     subtitle = "正在同步当前账号的歌单数据，请稍候。",
                     tag = "user_center_playlists_loading"
                 ) {
-                    CircularProgressIndicator(color = AccountVisualStyle.accentColor)
+                    CircularProgressIndicator(color = AccountVisualTheme.accent)
                 }
             }
         }
@@ -830,7 +831,7 @@ private fun LazyListScope.userCenterLoggedOutItems(
                 Surface(
                     modifier = Modifier.size(44.dp),
                     shape = CircleShape,
-                    color = AccountVisualStyle.accentSoftColor,
+                    color = AccountVisualTheme.accentSoft,
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp
                 ) {
@@ -838,7 +839,7 @@ private fun LazyListScope.userCenterLoggedOutItems(
                         Icon(
                             imageVector = Icons.Rounded.LibraryMusic,
                             contentDescription = null,
-                            tint = AccountVisualStyle.accentColor,
+                            tint = AccountVisualTheme.accent,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -962,7 +963,7 @@ private fun UserCenterCollectionCard(
                 Surface(
                     modifier = Modifier.size(58.dp),
                     shape = RoundedCornerShape(12.dp),
-                    color = AccountVisualStyle.accentSoftColor
+                    color = AccountVisualTheme.accentSoft
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (!item.imageUrl.isNullOrBlank()) {
@@ -976,7 +977,7 @@ private fun UserCenterCollectionCard(
                             Icon(
                                 imageVector = Icons.Rounded.LibraryMusic,
                                 contentDescription = null,
-                                tint = AccountVisualStyle.accentColor
+                                tint = AccountVisualTheme.accent
                             )
                         }
                     }
@@ -1004,7 +1005,7 @@ private fun UserCenterCollectionCard(
                         Text(
                             text = meta,
                             style = MaterialTheme.typography.labelMedium,
-                            color = AccountVisualStyle.accentTextColor
+                            color = AccountVisualTheme.accentText
                         )
                     }
                 }
@@ -1013,7 +1014,7 @@ private fun UserCenterCollectionCard(
                     Text(
                         text = badge,
                         style = MaterialTheme.typography.labelSmall,
-                        color = AccountVisualStyle.accentTextColor
+                        color = AccountVisualTheme.accentText
                     )
                 }
 
@@ -1085,7 +1086,7 @@ private fun UserCenterLoggedOutHeader(
                     .size(58.dp)
                     .testTag("user_center_avatar"),
                 shape = CircleShape,
-                color = AccountVisualStyle.accentSoftColor,
+                color = AccountVisualTheme.accentSoft,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {
@@ -1093,7 +1094,7 @@ private fun UserCenterLoggedOutHeader(
                     Icon(
                         imageVector = Icons.Rounded.AccountCircle,
                         contentDescription = null,
-                        tint = AccountVisualStyle.accentColor,
+                        tint = AccountVisualTheme.accent,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -1163,7 +1164,7 @@ private fun UserCenterProfileHeader(
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = CircleShape,
-                    color = AccountVisualStyle.accentSoftColor,
+                    color = AccountVisualTheme.accentSoft,
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp
                 ) {
@@ -1171,7 +1172,7 @@ private fun UserCenterProfileHeader(
                         Icon(
                             imageVector = Icons.Rounded.AccountCircle,
                             contentDescription = null,
-                            tint = AccountVisualStyle.accentColor,
+                            tint = AccountVisualTheme.accent,
                             modifier = Modifier.size(50.dp)
                         )
                     }

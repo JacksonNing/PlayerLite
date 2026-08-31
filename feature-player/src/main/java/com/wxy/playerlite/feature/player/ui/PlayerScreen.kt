@@ -1,10 +1,7 @@
 package com.wxy.playerlite.feature.player.ui
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.graphics.Bitmap
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -44,7 +41,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -72,7 +68,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -95,7 +90,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
@@ -113,8 +107,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
-import androidx.core.view.WindowInsetsControllerCompat
 import com.wxy.playerlite.core.playlist.PlaylistItem
+import com.wxy.playerlite.designsystem.theme.PlayerLiteContentSystemBarsEffect
 import com.wxy.playerlite.designsystem.theme.PlayerLiteThemeContract
 import com.wxy.playerlite.designsystem.theme.PlayerLiteVisualTheme
 import com.wxy.playerlite.feature.player.LyricLine
@@ -1181,20 +1175,9 @@ fun shouldUseLightStatusBarContent(backdropColor: Color): Boolean {
 private fun PlayerStatusBarStyleEffect(
     backdropColor: Color
 ) {
-    val view = LocalView.current
-    val defaultUseLightStatusBarContent = isSystemInDarkTheme()
-    DisposableEffect(view, backdropColor, defaultUseLightStatusBarContent) {
-        val activity = view.context.findActivity()
-        if (activity == null) {
-            onDispose { }
-        } else {
-            val controller = WindowInsetsControllerCompat(activity.window, view)
-            controller.isAppearanceLightStatusBars = !shouldUseLightStatusBarContent(backdropColor)
-            onDispose {
-                controller.isAppearanceLightStatusBars = !defaultUseLightStatusBarContent
-            }
-        }
-    }
+    PlayerLiteContentSystemBarsEffect(
+        useLightContent = shouldUseLightStatusBarContent(backdropColor)
+    )
 }
 
 private fun deriveBackdropGradientStop(
@@ -1209,14 +1192,6 @@ private fun deriveBackdropGradientStop(
     hsv[1] = (hsv[1] * saturationScale).coerceIn(0.08f, 0.42f)
     hsv[2] = (hsv[2] * valueScale).coerceIn(minValue, maxValue)
     return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
-private tailrec fun Context.findActivity(): Activity? {
-    return when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
-    }
 }
 
 @Composable

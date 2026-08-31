@@ -29,7 +29,8 @@ import com.wxy.playerlite.feature.song.SongRef
 import com.wxy.playerlite.feature.song.createAlbumDetailIntent
 import com.wxy.playerlite.feature.song.createArtistDetailIntent
 import com.wxy.playerlite.feature.song.createSongDetailIntent
-import com.wxy.playerlite.ui.theme.PlayerLiteTheme
+import com.wxy.playerlite.ui.theme.PlayerLiteAppTheme
+import com.wxy.playerlite.ui.theme.applyInitialPlayerLiteSystemBars
 
 class PlayerActivity : ComponentActivity() {
     private val viewModel: PlayerViewModel by sharedPlayerViewModels()
@@ -47,6 +48,7 @@ class PlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enqueueLaunchRequest(intent)
         enableEdgeToEdge()
+        applyInitialPlayerLiteSystemBars()
         onBackPressedDispatcher.addCallback(this) {
             closePlayer()
         }
@@ -103,7 +105,7 @@ class PlayerActivity : ComponentActivity() {
             LaunchedEffect(state.orientationMode) {
                 requestedOrientation = resolvePlayerRequestedOrientation(state.orientationMode)
             }
-            PlayerLiteTheme {
+            PlayerLiteAppTheme {
                 val screenCallbacks = PlayerScreenCallbacks(
                     onPickAudio = {
                         pickAudioLauncher.launch(arrayOf("audio/*"))
