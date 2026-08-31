@@ -3,9 +3,12 @@ package com.wxy.playerlite.feature.player
 import com.sun.net.httpserver.HttpServer
 import com.wxy.playerlite.network.core.AuthHeaderProvider
 import com.wxy.playerlite.network.core.JsonHttpClient
+import com.wxy.playerlite.network.core.NetworkRequestException
 import java.io.File
 import java.net.InetSocketAddress
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -45,6 +48,74 @@ class LyricRepositoryTest {
             assertEquals(34_560L, lyric.lines[1].timestampMs)
             assertEquals("我好想住你隔壁", lyric.lines[1].text)
             assertTrue(File(directory, "33894312.lrc").exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun fetchLyrics_shouldRetryTransientFailuresUntilSuccess() = runTest {
+        val directory = createTempDirectory(prefix = "lyric-retry-test").toFile()
+        try {
+            val remoteDataSource = SequencedLyricRemoteDataSource(
+                results = ArrayDeque(
+                    listOf(
+                        Result.failure(NetworkRequestException("timeout")),
+                        Result.success(jsonObject("""{"code":503}""")),
+                        Result.success(
+                            jsonObject(
+                                """
+                                {
+                                  "code": 200,
+                                  "lrc": {
+                                    "lyric": "[00:01.00]重试成功"
+                                  }
+                                }
+                                """
+                            )
+                        )
+                    )
+                )
+            )
+            val repository = DefaultLyricRepository(
+                remoteDataSource = remoteDataSource,
+                localStore = LyricLocalStore(directory = directory)
+            )
+
+            val lyric = repository.fetchLyrics("retry-song")
+
+            requireNotNull(lyric)
+            assertEquals("重试成功", lyric.lines.single().text)
+            assertEquals(3, remoteDataSource.fetchCount)
+            assertTrue(File(directory, "retry-song.lrc").exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun fetchLyrics_shouldNotRetryNonTransientClientFailure() = runTest {
+        val directory = createTempDirectory(prefix = "lyric-no-retry-test").toFile()
+        try {
+            val remoteDataSource = SequencedLyricRemoteDataSource(
+                results = ArrayDeque(
+                    listOf(
+                        Result.success(jsonObject("""{"code":400}""")),
+                        Result.success(jsonObject("""{"code":200,"lrc":{"lyric":"[00:01.00]不应请求"}}"""))
+                    )
+                )
+            )
+            val repository = DefaultLyricRepository(
+                remoteDataSource = remoteDataSource,
+                localStore = LyricLocalStore(directory = directory)
+            )
+
+            val failure = runCatching {
+                repository.fetchLyrics("invalid-song")
+            }.exceptionOrNull()
+
+            assertTrue(failure is IllegalStateException)
+            assertEquals(1, remoteDataSource.fetchCount)
         } finally {
             directory.deleteRecursively()
         }
@@ -151,6 +222,18 @@ private class FakeLyricRemoteDataSource(
     private val payload: JsonObject
 ) : LyricRemoteDataSource {
     override suspend fun fetchLyrics(songId: String): JsonObject = payload
+}
+
+private class SequencedLyricRemoteDataSource(
+    private val results: ArrayDeque<Result<JsonObject>>
+) : LyricRemoteDataSource {
+    var fetchCount: Int = 0
+        private set
+
+    override suspend fun fetchLyrics(songId: String): JsonObject {
+        fetchCount += 1
+        return results.removeFirst().getOrThrow()
+    }
 }
 
 private class LyricHttpServer(

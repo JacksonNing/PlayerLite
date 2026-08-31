@@ -1,7 +1,9 @@
 package com.wxy.playerlite.feature.player
 
 import com.wxy.playerlite.network.core.JsonHttpClient
+import com.wxy.playerlite.network.core.NetworkRequestException
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -22,14 +24,38 @@ internal class DefaultLyricRepository(
     }
 
     override suspend fun fetchLyrics(songId: String): ParsedLyrics? {
-        val payload = remoteDataSource.fetchLyrics(songId)
-        check(payload.intValue("code") == 200) {
-            "Lyric request failed: code=${payload.intValue("code")}"
-        }
+        val payload = fetchPayloadWithRetry(songId)
         val rawLyric = payload.objectValue("lrc").stringValue("lyric").orEmpty()
         val parsed = LyricParser.parse(songId = songId, rawLyric = rawLyric) ?: return null
         localStore.write(songId = songId, rawLyric = rawLyric)
         return parsed
+    }
+
+    private suspend fun fetchPayloadWithRetry(songId: String): JsonObject {
+        var attemptIndex = 0
+        while (true) {
+            val payload = try {
+                remoteDataSource.fetchLyrics(songId)
+            } catch (error: NetworkRequestException) {
+                val retryDelayMs = LYRIC_REQUEST_RETRY_DELAYS_MS.getOrNull(attemptIndex)
+                if (retryDelayMs == null || !error.isRetryableLyricRequestFailure()) {
+                    throw error
+                }
+                delay(retryDelayMs)
+                attemptIndex += 1
+                continue
+            }
+            val responseCode = payload.intValue("code")
+            if (responseCode == 200) {
+                return payload
+            }
+            val retryDelayMs = LYRIC_REQUEST_RETRY_DELAYS_MS.getOrNull(attemptIndex)
+            if (retryDelayMs == null || !payload.isRetryableLyricResponse()) {
+                throw IllegalStateException("Lyric request failed: code=$responseCode")
+            }
+            delay(retryDelayMs)
+            attemptIndex += 1
+        }
     }
 }
 
@@ -154,3 +180,19 @@ private fun JsonObject.stringValue(key: String): String? {
 private fun JsonObject.intValue(key: String): Int {
     return stringValue(key)?.toIntOrNull() ?: 0
 }
+
+private fun JsonObject.isRetryableLyricResponse(): Boolean {
+    return intValue("code").isRetryableLyricStatusCode() ||
+        intValue(JsonHttpClient.KEY_HTTP_STATUS).isRetryableLyricStatusCode()
+}
+
+private fun NetworkRequestException.isRetryableLyricRequestFailure(): Boolean {
+    val status = statusCode ?: return true
+    return status in 200..299 || status.isRetryableLyricStatusCode()
+}
+
+private fun Int.isRetryableLyricStatusCode(): Boolean {
+    return this == 408 || this == 425 || this == 429 || this in 500..599
+}
+
+private val LYRIC_REQUEST_RETRY_DELAYS_MS = longArrayOf(250L, 750L)
