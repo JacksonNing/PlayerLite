@@ -1,6 +1,10 @@
 package com.wxy.playerlite.feature.home
 
+import com.sun.net.httpserver.HttpServer
 import com.wxy.playerlite.core.playlist.PlaylistItem
+import com.wxy.playerlite.network.core.AuthHeaderProvider
+import com.wxy.playerlite.network.core.JsonHttpClient
+import java.net.InetSocketAddress
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -11,6 +15,42 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeDiscoveryRepositoryTest {
+    @Test
+    fun fetchHomepageBlocks_shouldBustCacheAndForwardAuthHeaders() = runBlocking {
+        val capturedQueries = mutableListOf<String?>()
+        val capturedCookies = mutableListOf<String?>()
+        val server = HttpServer.create(InetSocketAddress(0), 0).apply {
+            createContext("/homepage/block/page") { exchange ->
+                capturedQueries += exchange.requestURI.rawQuery
+                capturedCookies += exchange.requestHeaders.getFirst("Cookie")
+                val body = """{"code":200,"data":{"blocks":[]}}""".toByteArray()
+                exchange.sendResponseHeaders(200, body.size.toLong())
+                exchange.responseBody.use { output -> output.write(body) }
+            }
+            start()
+        }
+        val timestamps = ArrayDeque(listOf(101L, 202L))
+        val remoteDataSource = NeteaseHomeDiscoveryRemoteDataSource(
+            httpClient = JsonHttpClient(
+                baseUrl = "http://127.0.0.1:${server.address.port}",
+                authHeaderProvider = AuthHeaderProvider {
+                    mapOf("Cookie" to "MUSIC_U=test-session")
+                }
+            ),
+            currentTimeMillis = timestamps::removeFirst
+        )
+
+        try {
+            remoteDataSource.fetchHomepageBlocks()
+            remoteDataSource.fetchHomepageBlocks()
+        } finally {
+            server.stop(0)
+        }
+
+        assertEquals(listOf("timestamp=101", "timestamp=202"), capturedQueries)
+        assertEquals(listOf("MUSIC_U=test-session", "MUSIC_U=test-session"), capturedCookies)
+    }
+
     @Test
     fun fetchHomeOverview_shouldMapSupportedBlocksAndPreserveOrder() = runBlocking {
         val repository = DefaultHomeDiscoveryRepository(

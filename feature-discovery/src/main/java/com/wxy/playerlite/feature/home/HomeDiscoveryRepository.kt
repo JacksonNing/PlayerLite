@@ -50,10 +50,15 @@ internal interface HomeDiscoveryRemoteDataSource {
 }
 
 internal class NeteaseHomeDiscoveryRemoteDataSource(
-    private val httpClient: JsonHttpClient
+    private val httpClient: JsonHttpClient,
+    private val currentTimeMillis: () -> Long = System::currentTimeMillis
 ) : HomeDiscoveryRemoteDataSource {
     override suspend fun fetchHomepageBlocks(): JsonObject {
-        return httpClient.get(path = "/homepage/block/page")
+        return httpClient.get(
+            path = "/homepage/block/page",
+            queryParams = mapOf("timestamp" to currentTimeMillis().toString()),
+            requiresAuth = true
+        )
     }
 
     override suspend fun fetchDefaultSearch(): JsonObject {
